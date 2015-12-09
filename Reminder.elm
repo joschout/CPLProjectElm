@@ -20,7 +20,8 @@ initModel  =
   { body = "Dit is een testbody."
   , created = "07/12/2016"
   , pinned = False
-  , markedAsDone = False }
+  , markedAsDone = False
+  }
 
 actionMailbox : Signal.Mailbox Action
 actionMailbox = Signal.mailbox NoOp
@@ -45,6 +46,8 @@ update action model =
 state : Signal Model
 state = Signal.foldp update initModel actionSignal
 
+
+-- VIEW
 view : Signal.Address Action -> Model -> Html
 view address model =
   div []
