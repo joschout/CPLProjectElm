@@ -53,7 +53,9 @@ view address model =
   div []
     [ div [ reminderStyle ] [ text model.body]
     , viewMarkAsDoneButton address model
-    , viewPinButton address model]
+    , viewPinButton address model
+    , viewDate model
+    ]
 
 -- MarkAsDone button
 viewMarkAsDoneButton : Signal.Address Action -> Model -> Html
@@ -88,6 +90,10 @@ pinButtonText model =
       -> "Unpin"
     False
       -> "Pin"
+viewDate : Model -> Html
+viewDate model =
+  div [] [ text model.created ]
+
 
 reminderStyle : Attribute
 reminderStyle =

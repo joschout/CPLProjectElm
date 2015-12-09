@@ -52,7 +52,9 @@ view address model =
     , viewEmailBody model
     , viewMoreButton address model
     , viewMarkAsDoneButton address model
-    , viewPinButton address model]
+    , viewPinButton address model
+    , viewDate model
+    ]
 
 viewEmailHeading : Model -> Html
 viewEmailHeading model =
@@ -135,6 +137,10 @@ pinButtonText model =
       -> "Unpin"
     False
       -> "Pin"
+
+viewDate : Model -> Html
+viewDate model =
+  div [] [ text model.date ]
 
 -- MAIN
 main : Signal Html
