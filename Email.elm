@@ -1,7 +1,6 @@
 module Email where
 
 import Html exposing (..)
-import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import String
 
@@ -10,39 +9,24 @@ type alias Email =
   , to: String
   , title: String
   , body: String
-  , date: String
-  , pinned: Bool
-  , markedAsDone: Bool
   , isTruncated : Bool
   }
 
 -- MODEL
 type alias Model = Email
 
-actionMailbox : Signal.Mailbox Action
-actionMailbox = Signal.mailbox NoOp
-
-actionSignal : Signal Action
-actionSignal = actionMailbox.signal
-
 -- UPDATE
-type Action = NoOp | MarkAsDone Bool | Pin Bool | Truncate Bool
+type Action
+  = NoOp
+  | Truncate Bool
 
 update : Action -> Model -> Model
 update action model =
   case action of
     NoOp ->
       model
-    MarkAsDone markBool ->
-       { model | markedAsDone = markBool }
-    Pin pinBool ->
-      { model | pinned = pinBool }
     Truncate truncateBool ->
       { model | isTruncated = truncateBool }
-
-
-state : Signal Model
-state = Signal.foldp update initModel actionSignal
 
 -- VIEW
 view : Signal.Address Action -> Model -> Html
@@ -51,15 +35,12 @@ view address model =
     [ viewEmailHeading model
     , viewEmailBody model
     , viewMoreButton address model
-    , viewMarkAsDoneButton address model
-    , viewPinButton address model
-    , viewDate model
     ]
 
 viewEmailHeading : Model -> Html
 viewEmailHeading model =
-  div
-    [ emailStyle ]
+  p
+    []
     [ model.title ++ " | " ++ model.from ++ " says:"
       |> text ]
 
@@ -68,12 +49,12 @@ viewEmailBody model =
   let canBeTruncated = allowedToBeTruncated model.body
   in case canBeTruncated && model.isTruncated of
     True ->
-      div
+      p
         []
-        [ String.left 200 model.body
+        [  (String.left 200 model.body) ++ "..."
           |> text ]
     False ->
-      div [] [ text model.body]
+      p [] [ text model.body]
 
 -- More Button
 viewMoreButton : Signal.Address Action -> Model -> Html
@@ -82,10 +63,10 @@ viewMoreButton address model =
   in case canBeTruncated of
     True ->
       button
-      [ not model.isTruncated
+        [ not model.isTruncated
           |> Truncate
           |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
-      [ text <| moreButtonText model ]
+        [ text <| moreButtonText model ]
     False ->
       div [] []
 
@@ -102,64 +83,6 @@ moreButtonText model =
       -> "More"
     False
       -> "Less"
-
-
--- MarkAsDone button
-viewMarkAsDoneButton : Signal.Address Action -> Model -> Html
-viewMarkAsDoneButton address model =
-  button
-  [ not model.markedAsDone
-      |> MarkAsDone
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
-  [ text <| markAsDoneButtonText model ]
-
-markAsDoneButtonText : Model -> String
-markAsDoneButtonText model =
-  case model.markedAsDone of
-    True
-      -> "Undo"
-    False
-      -> "Mark as Done"
-
--- Pin button
-viewPinButton : Signal.Address Action -> Model -> Html
-viewPinButton address model =
-  button
-  [ not model.pinned
-      |> Pin
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
-  [ text <| pinButtonText model ]
-
-pinButtonText : Model -> String
-pinButtonText model =
-  case model.pinned of
-    True
-      -> "Unpin"
-    False
-      -> "Pin"
-
-viewDate : Model -> Html
-viewDate model =
-  div [] [ text model.date ]
-
--- MAIN
-main : Signal Html
-main =
-   Signal.map (view actionMailbox.address) state
-
-
-emailStyle : Attribute
-emailStyle =
-  style
-    [ ("font-size", "20px")
-    , ("font-family", "monospace")
-    , ("display", "inline-block")
-    , ("width", "100%")
-    , ("text-align", "left")
-    ]
-
-
-
 
 initModel : Model
 initModel  =
@@ -181,8 +104,5 @@ initModel  =
               service with robust ideas. Dynamically innovate
               resource-leveling customer service for state of the art customer
               service."""
-  , date = "2015-01-30"
-  , pinned = False
-  , markedAsDone = False
   , isTruncated = True
   }

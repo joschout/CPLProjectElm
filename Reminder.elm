@@ -1,7 +1,6 @@
 module Reminder where
 
 import Html exposing (..)
-import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 
 type alias Reminder =
@@ -30,18 +29,14 @@ actionSignal : Signal Action
 actionSignal = actionMailbox.signal
 
 -- UPDATE
-type Action = NoOp | MarkAsDone Bool | Pin Bool
-
+type Action
+  = NoOp
 
 update : Action -> Model -> Model
 update action model =
   case action of
     NoOp ->
       model
-    MarkAsDone markBool ->
-       {model | markedAsDone = markBool}
-    Pin pinBool ->
-      {model | pinned = pinBool}
 
 state : Signal Model
 state = Signal.foldp update initModel actionSignal
@@ -50,60 +45,8 @@ state = Signal.foldp update initModel actionSignal
 -- VIEW
 view : Signal.Address Action -> Model -> Html
 view address model =
-  div []
-    [ div [ reminderStyle ] [ text model.body]
-    , viewMarkAsDoneButton address model
-    , viewPinButton address model
-    , viewDate model
-    ]
+   p [] [ text model.body]
 
--- MarkAsDone button
-viewMarkAsDoneButton : Signal.Address Action -> Model -> Html
-viewMarkAsDoneButton address model =
-  button
-  [ not model.markedAsDone
-      |> MarkAsDone
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
-  [ text <| markAsDoneButtonText model ]
-
-markAsDoneButtonText : Model -> String
-markAsDoneButtonText model =
-  case model.markedAsDone of
-    True
-      -> "Undo"
-    False
-      -> "Mark as Done"
-
--- Pin button
-viewPinButton : Signal.Address Action -> Model -> Html
-viewPinButton address model =
-  button
-  [ not model.pinned
-      |> Pin
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
-  [ text <| pinButtonText model ]
-
-pinButtonText : Model -> String
-pinButtonText model =
-  case model.pinned of
-    True
-      -> "Unpin"
-    False
-      -> "Pin"
-viewDate : Model -> Html
-viewDate model =
-  div [] [ text model.created ]
-
-
-reminderStyle : Attribute
-reminderStyle =
-  style
-    [ ("font-size", "20px")
-    , ("font-family", "monospace")
-    , ("display", "inline-block")
-    , ("width", "100%")
-    , ("text-align", "left")
-    ]
 main : Signal Html
 main =
    Signal.map (view actionMailbox.address) state
