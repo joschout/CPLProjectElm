@@ -10,7 +10,7 @@ import Email exposing (Action, update, Model, initModel)
 import Reminder exposing (Action, update, Model, initModel)
 import TimeUtil exposing (timeToString, stringToTime)
 
--- MODEL
+-- MODEL -----------------------------------------------------------------------
 actionMailbox : Signal.Mailbox Action
 actionMailbox = Signal.mailbox NoOp
 
@@ -28,7 +28,7 @@ type alias Model =
   , markedAsDone : Bool
   }
 
--- UPDATE
+-- UPDATE ----------------------------------------------------------------------
 type Action
   = NoOp
   | MarkAsDone Bool
@@ -72,7 +72,7 @@ updateReminderAction reminderAction model =
 state : Signal Model
 state = Signal.foldp update initModel actionSignal
 
--- VIEW
+-- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
   div [ itemStyle ]
@@ -131,7 +131,7 @@ viewDate model =
     [ "date: " ++ TimeUtil.timeToString model.date
       |> text ]
 
--- MAIN
+-- MAIN ------------------------------------------------------------------------
 main : Signal Html
 main =
    Signal.map (view actionMailbox.address) state
