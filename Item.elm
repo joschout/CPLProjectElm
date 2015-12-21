@@ -4,10 +4,11 @@ import Signal
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
+import Time exposing (Time)
 
 import Email exposing (Action, update, Model, initModel)
 import Reminder exposing (Action, update, Model, initModel)
-
+import TimeUtil exposing (timeToString, stringToTime)
 
 -- MODEL
 actionMailbox : Signal.Mailbox Action
@@ -22,7 +23,7 @@ type ItemModel
 
 type alias Model =
   { itemModel : ItemModel
-  , date : String
+  , date : Time -- Time is comparable
   , pinned : Bool
   , markedAsDone : Bool
   }
@@ -127,7 +128,7 @@ viewDate : Model -> Html
 viewDate model =
   p
     []
-    [ "date: " ++ model.date
+    [ "date: " ++ TimeUtil.timeToString model.date
       |> text ]
 
 -- MAIN
@@ -139,7 +140,7 @@ initModel : Model
 initModel =
   { itemModel = EmailModel Email.initModel
     --itemModel = ReminderModel Reminder.initModel
-  , date = "2015-01-30"
+  , date = TimeUtil.stringToTime "2015-01-30"
   , pinned = False
   , markedAsDone = False
   }

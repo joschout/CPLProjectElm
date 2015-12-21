@@ -5,9 +5,6 @@ import Html.Events exposing (onClick)
 
 type alias Reminder =
   { body: String
-  , created: String
-  , pinned: Bool
-  , markedAsDone: Bool
   }
 
 
@@ -17,9 +14,6 @@ type alias Model = Reminder
 initModel : Model
 initModel  =
   { body = "Dit is een testbody."
-  , created = "07/12/2016"
-  , pinned = False
-  , markedAsDone = False
   }
 
 actionMailbox : Signal.Mailbox Action
