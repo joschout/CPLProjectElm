@@ -41,7 +41,7 @@ sortOnDate : Item.Model -> Item.Model -> Order
 sortOnDate item1 item2 =
   let dateItem1 = item1.date
       dateItem2 = item2.date
-  in compare dateItem1 dateItem2
+  in compare dateItem2 dateItem1
 
 -- MODEL -----------------------------------------------------------------------
 actionMailbox : Signal.Mailbox Action
@@ -121,13 +121,15 @@ doneHeader : Html
 doneHeader =
   h1 [] [text "Done"]
 
-{--
+
 -- VIEW REMINDER SECTION
 viewReminderDiv  : Signal.Address Action -> Model -> Html
 viewReminderDiv address model =
   div []
+    [ reminderHeader
+    ,
+    ]
 
 reminderHeader : Html
 reminderHeader =
   h1 [] [text "Reminder"]
---}
