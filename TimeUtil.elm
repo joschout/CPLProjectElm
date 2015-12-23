@@ -5,13 +5,22 @@ import Time exposing (Time)
 import Date exposing (Date)
 import String exposing (padLeft)
 
-timeToString : Time -> String
-timeToString time =
+
+type DateFormat
+  = Dash_DMY
+  | Slash_YMD
+
+timeToDateString : DateFormat -> Time -> String
+timeToDateString dateFormat time =
   let date = Date.fromTime time
   in let dayAsInt = Date.day date
          monthAsInt = monthToInt date
          yearAsInt = Date.year date
-     in combineWithDash dayAsInt monthAsInt yearAsInt
+     in case dateFormat of
+       Dash_DMY ->
+         combineWithDash dayAsInt monthAsInt yearAsInt
+       Slash_YMD ->
+         combineWithSlash dayAsInt monthAsInt yearAsInt
 
 combineWithDash : Int -> Int -> Int -> String
 combineWithDash day month year =
@@ -21,6 +30,15 @@ combineWithDash day month year =
           |> monthAsTwoIntegers
       yearString = toString year
   in dayString ++ "-" ++ monthString ++ "-" ++ yearString
+
+combineWithSlash : Int -> Int -> Int -> String
+combineWithSlash day month year =
+  let dayString = toString day
+      monthString
+        = toString month
+          |> monthAsTwoIntegers
+      yearString = toString year
+  in dayString ++ "/" ++ monthString ++ "/" ++ yearString
 
 monthToInt : Date -> Int
 monthToInt date =

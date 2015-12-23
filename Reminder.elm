@@ -8,12 +8,12 @@ type alias Reminder =
   }
 
 
--- MODEL
+-- MODEL -----------------------------------------------------------------------
 type alias Model = Reminder
 
-initModel : Model
-initModel  =
-  { body = "Dit is een testbody."
+init : String -> Model
+init  body'=
+  { body = body'
   }
 
 actionMailbox : Signal.Mailbox Action
@@ -22,7 +22,7 @@ actionMailbox = Signal.mailbox NoOp
 actionSignal : Signal Action
 actionSignal = actionMailbox.signal
 
--- UPDATE
+-- UPDATE ----------------------------------------------------------------------
 type Action
   = NoOp
 
@@ -33,10 +33,10 @@ update action model =
       model
 
 state : Signal Model
-state = Signal.foldp update initModel actionSignal
+state = Signal.foldp update (init "Dit is een testbody.") actionSignal
 
 
--- VIEW
+-- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
    p [] [ text model.body]

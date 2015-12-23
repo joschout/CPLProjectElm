@@ -3,6 +3,10 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
+import ItemList exposing (Model, actionMailbox)
+import Initial exposing (initialItemList)
+
+
 -- Name: Jonas Schouterden
 -- Student ID: r0260385
 
@@ -59,7 +63,23 @@ import Signal
 
 
 -- Start of program
-
+{--
 main : Signal Html.Html
 main = Html.text "This should work."
        |> Signal.constant
+--}
+
+-- MODEL
+
+-- UPDATE
+
+-- VIEW
+
+
+
+main : Signal Html
+main =
+  Signal.map (ItemList.view actionMailbox.address) state
+
+state : Signal ItemList.Model
+state = Signal.foldp ItemList.update initialItemList ItemList.actionSignal

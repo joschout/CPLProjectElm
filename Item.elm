@@ -7,16 +7,10 @@ import Html.Events exposing (onClick)
 import Time exposing (Time)
 
 import Email exposing (Action, update, Model, initModel)
-import Reminder exposing (Action, update, Model, initModel)
-import TimeUtil exposing (timeToString, stringToTime)
+import Reminder exposing (Action, update, Model, init)
+import TimeUtil exposing (timeToDateString, stringToTime, DateFormat)
 
 -- MODEL -----------------------------------------------------------------------
-actionMailbox : Signal.Mailbox Action
-actionMailbox = Signal.mailbox NoOp
-
-actionSignal : Signal Action
-actionSignal = actionMailbox.signal
-
 type ItemModel
   = EmailModel Email.Model
   | ReminderModel Reminder.Model
@@ -68,9 +62,6 @@ updateReminderAction reminderAction model =
       { model | itemModel
           =  Reminder.update reminderAction reminderModel
           |> ReminderModel }
-
-state : Signal Model
-state = Signal.foldp update initModel actionSignal
 
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
@@ -128,11 +119,19 @@ viewDate : Model -> Html
 viewDate model =
   p
     []
-    [ "date: " ++ TimeUtil.timeToString model.date
+    [ "date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date  
       |> text ]
 
--- MAIN ------------------------------------------------------------------------
-main : Signal Html
+-- MAIN, STATE & SIGNALS -------------------------------------------------------
+actionMailbox : Signal.Mailbox Action
+actionMailbox = Signal.mailbox NoOp
+
+actionSignal : Signal Action
+actionSignal = actionMailbox.signal
+
+state : Signal Model
+state = Signal.foldp update initModel actionSignal
+
 main =
    Signal.map (view actionMailbox.address) state
 
@@ -144,6 +143,16 @@ initModel =
   , pinned = False
   , markedAsDone = False
   }
+-- UTILS -----------------------------------------------------------------------
+newReminderItem : String ->  String -> Bool -> Bool -> Model
+newReminderItem body' date' pinned' markedAsDone' =
+  { itemModel = ReminderModel
+                  <| Reminder.init body'
+  , date = TimeUtil.stringToTime date'
+  , pinned = pinned'
+  , markedAsDone = markedAsDone'
+  }
+
 
 itemStyle : Attribute
 itemStyle =

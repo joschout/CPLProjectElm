@@ -87,10 +87,3 @@ initialItemList =
   { itemList = [ (1,itemEx1), (2,itemEx2), (3,itemEx3), (4, itemEx4) ]
   , nextID = 5
   }
-
-main : Signal Html
-main =
-  Signal.map (ItemList.view actionMailbox.address) state
-
-state : Signal ItemList.Model
-state = Signal.foldp ItemList.update initialItemList ItemList.actionSignal
