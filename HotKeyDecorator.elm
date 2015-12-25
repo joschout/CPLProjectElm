@@ -2,7 +2,7 @@ module HotKeyDecorator where
 
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
-    toggleDone, toggleVisibilityDoneSection)
+    toggleDone, toggleVisibilityDoneSection, Action)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
 import Debug
@@ -25,8 +25,9 @@ type Action
   | ReverseSortHK
   | NormalSortHK
   | AddReminderDecoratorAction AddReminderDecorator.Action
-  -- EXTRA
+  -- EXTENSIONS
   | ToggleVisibilityDoneSection
+  | ToggleVisibilityReminderSection
 
 update : Action -> Model -> Model
 update action model =
@@ -53,6 +54,9 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update addReminderDecoratorAction model.addReminderDecorator }
     ToggleVisibilityDoneSection ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleVisibilityDoneSection) model.addReminderDecorator }
+    ToggleVisibilityReminderSection ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.ToggleReminderSectionVisibiliy) model.addReminderDecorator }
+
 -- VIEW ------------------------------------------------------------------------
 
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
@@ -111,9 +115,6 @@ signalOneKeyNotPressed keySignal1 keySignal2 =
   let oneKeyNotPressed isPressed1 isPressed2 = (not isPressed1) || (not isPressed2)
   in Signal.map2 oneKeyNotPressed keySignal1 keySignal2
 
-
-
-
 filterTrueValues : Signal Bool -> Signal Bool
 filterTrueValues signal =
   let filterCondition value = if value == True
@@ -168,13 +169,18 @@ reverseSorting : Signal Action
 reverseSorting =
   Signal.map (Debug.watch "reverseSorting") (signalActionOnKeyPress ReverseSortHK 83)
 
+-----------------------------
+--EXTENSIONS ----------------
+-----------------------------
 -- ALT + I
 toggleVisibilityDoneSection : Signal Action
 toggleVisibilityDoneSection
   = signalActionOnKeyPress ToggleVisibilityDoneSection 73
 
-
-
+-- Alt + R
+toggleVisibilityReminderSection : Signal Action
+toggleVisibilityReminderSection
+ = signalActionOnKeyRelease ToggleVisibilityReminderSection 82
 
 --------------------------------------------------------------------------------
 mergedHotkeyActionSignal : Signal Action
@@ -187,6 +193,7 @@ mergedHotkeyActionSignal =
                     , normalSorting
                     , reverseSorting
                     , toggleVisibilityDoneSection
+                    , toggleVisibilityReminderSection
                     ])
 
 -- VIEW ------------------------------------------------------------------------

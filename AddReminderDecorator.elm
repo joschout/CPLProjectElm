@@ -30,6 +30,8 @@ type alias Model =
   , inputState : Dict String InputState
     -- a dictionary that maps the IDs of the inputs to their state
     -- String is the Key which maps to a value of InputState
+    --EXTENSIONS:
+  , reminderSectionVisible : Bool
   }
 
 init : Model
@@ -38,6 +40,7 @@ init =
   , reminderBody = ""
   , date = ""
   , inputState = Dict.empty
+  , reminderSectionVisible = True
   }
 
 -- UPDATE ----------------------------------------------------------------------
@@ -50,6 +53,8 @@ type Action
   | SubmitReminder
   | ItemListAction ItemList.Action
   | SetItemList ItemList.Model
+  -- EXTENSIONS
+  | ToggleReminderSectionVisibiliy
 
 update : Action -> Model -> Model
 update action model =
@@ -81,7 +86,11 @@ update action model =
       { model | itemList = ItemList.update itemListAction model.itemList}
 
     SetItemList itemListModel ->
-      {model | itemList = itemListModel }
+      { model | itemList = itemListModel }
+
+    ToggleReminderSectionVisibiliy ->
+      { model | reminderSectionVisible = (not model.reminderSectionVisible) }
+
 
 submitReminder : Model -> Model
 submitReminder model =
@@ -102,19 +111,24 @@ viewItemList address model =
 
 viewReminder : Signal.Address Action -> Model -> Html
 viewReminder address model =
-  div [ class "container" , reminderSectionStyle]
-  [ reminderHeader
-  , div [ attribute "role" "form" ]
-    [ reminderBodyInput address model
-    , dateInput address model
-    , button [ class "btn btn-default"
-              , onClick address
-                  <| if isValid model then SubmitReminder
-                                      else SetInputState
-              ]
-      [ text "Add" ]
-    ]
-  ]
+  case model.reminderSectionVisible of
+    True ->
+      div [ class "container" , reminderSectionStyle]
+      [ reminderHeader
+      , div [ attribute "role" "form" ]
+        [ reminderBodyInput address model
+        , dateInput address model
+        , button [ class "btn btn-default"
+                  , onClick address
+                      <| if isValid model then SubmitReminder
+                                          else SetInputState
+                  ]
+          [ text "Add" ]
+        ]
+      ]
+      
+    False ->
+      div [] []
 
 reminderHeader : Html
 reminderHeader =

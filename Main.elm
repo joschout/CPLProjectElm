@@ -13,7 +13,11 @@ import Initial exposing (initialItemList)
 
 -- * Add a hotkey to toggle the visibility of 'done' items.
 -- Status: Completed / Attempted / Unattempted
--- Summary:
+-- Summary: Completed
+-- The done section is visible when 2 conditions are fullfilled:
+-- 1) there are items marked as done
+-- 2) the visibility of the done section is on
+--    (Hotkey: ALT + I)
 
 
 -- * Hide the 'add reminder' functionality and add a hotkey to toggle its
