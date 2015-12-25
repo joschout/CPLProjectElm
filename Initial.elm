@@ -14,6 +14,7 @@ itemEx1=
   , date = TimeUtil.stringToTime "2015-01-30"
   , pinned = False
   , markedAsDone = False
+  , isFocused = False
   }
 
 emailEx1 : Email.Model
@@ -46,6 +47,7 @@ itemEx2 =
   , date = TimeUtil.stringToTime "2015-09-30"
   , pinned = False
   , markedAsDone = False
+  , isFocused = False
   }
 
 emailEx2 : Email.Model
@@ -64,6 +66,7 @@ itemEx3 =
     , date = TimeUtil.stringToTime "2016-09-30"
     , pinned = False
     , markedAsDone = False
+    , isFocused = False
     }
 reminderEx1 : Reminder.Model
 reminderEx1 =
@@ -77,6 +80,7 @@ itemEx4 =
   , date = TimeUtil.stringToTime "2015-09-25"
   , pinned = False
   , markedAsDone = False
+  , isFocused = False
   }
 reminderEx2 : Reminder.Model
 reminderEx2 =
@@ -86,4 +90,6 @@ initialItemList : ItemList.Model
 initialItemList =
   { itemList = [ (1,itemEx1), (2,itemEx2), (3,itemEx3), (4, itemEx4) ]
   , nextID = 5
+  , indexSelectedItem = 0
+  , reversedSortingOrder = False
   }

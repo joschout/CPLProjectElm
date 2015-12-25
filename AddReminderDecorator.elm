@@ -5,7 +5,7 @@ http://engineering.truqu.com/2015/09/25/real-world-elm-part-2.html
 --}
 
 import Html exposing (..)
-import Html.Attributes exposing (action, attribute, class, for, id, type')
+import Html.Attributes exposing (action, attribute, class, for, id, type', style)
 import Html.Events exposing (on, onClick, targetValue)
 import Dict exposing (Dict)
 import String
@@ -102,7 +102,7 @@ viewItemList address model =
 
 viewReminder : Signal.Address Action -> Model -> Html
 viewReminder address model =
-  div [ class "container" ]
+  div [ class "container" , reminderSectionStyle]
   [ reminderHeader
   , div [ attribute "role" "form" ]
     [ reminderBodyInput address model
@@ -178,6 +178,36 @@ isValidDate value =
 isValid : Model -> Bool
 isValid model =
   isValidReminderBody model.reminderBody && isValidDate model.date
+
+-- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
+focusOnNext : Model -> Action
+focusOnNext model =
+  ItemListAction (ItemList.focusOnNextItemAction model.itemList)
+
+
+focusOnPrevious : Model -> Action
+focusOnPrevious model =
+  ItemListAction (ItemList.focusOnPreviousItemAction model.itemList)
+
+--changeSorting : Model -> Action
+--changeSorting model =
+--  ItemListAction (ItemList.changeSortingAction model.itemList)
+
+normalSorting : Model -> Action
+normalSorting model =
+  ItemListAction (ItemList.normalSortingAction model.itemList)
+
+reverseSorting : Model -> Action
+reverseSorting model =
+  ItemListAction (ItemList.reverseSortingAction model.itemList)
+-- STYLE -----------------------------------------------------------------------
+
+reminderSectionStyle : Attribute
+reminderSectionStyle =
+  style
+    [ ("width", "40%")
+    , ("margin", "auto")
+    ]
 
 -- SIGNALS ---------------------------------------------------------------------
 

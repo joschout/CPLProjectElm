@@ -1,12 +1,17 @@
 module HotKeyDecorator where
 
-import AddReminderDecorator exposing (Model)
+import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext, normalSorting, reverseSorting, init)
 import Keyboard exposing (isDown, alt)
+import Html exposing (..)
+import Debug
 -- MODEL -----------------------------------------------------------------------
 type alias Model = {
-  itemList : AddReminderDecorator.Model
+  addReminderDecorator : AddReminderDecorator.Model
   }
 
+init : Model
+init =
+  { addReminderDecorator = AddReminderDecorator.init }
 -- UPDATE ----------------------------------------------------------------------
 type Action
   = NoOp
@@ -15,25 +20,35 @@ type Action
   | ToggleTruncationHK
   | TogglePinnedHK
   | ToggleDoneHK
-  | ChangeSortingHK
+  | ReverseSortHK
+  | NormalSortHK
+  | AddReminderDecoratorAction AddReminderDecorator.Action
 
 update : Action -> Model -> Model
 update action model =
   case action of
     NoOp ->
       model
-
     NextItemHK ->
-
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.focusOnNext model.addReminderDecorator) model.addReminderDecorator}
     PreviousItemHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.focusOnPrevious model.addReminderDecorator) model.addReminderDecorator }
+--    ChangeSortingHK ->
+--      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.changeSorting model.addReminderDecorator) model.addReminderDecorator }
+    ReverseSortHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.reverseSorting model.addReminderDecorator) model.addReminderDecorator }
+    NormalSortHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.normalSorting model.addReminderDecorator) model.addReminderDecorator }
 
-    ToggleTruncationHK ->
+    AddReminderDecoratorAction addReminderDecoratorAction ->
+      { model | addReminderDecorator = AddReminderDecorator.update addReminderDecoratorAction model.addReminderDecorator }
 
-    TogglePinnedHK ->
+    _ -> model
+    --    ToggleTruncationHK ->
 
-    ToggleDoneHK ->
+    --    TogglePinnedHK ->
 
-    ChangeSortingHK ->
+      --  ToggleDoneHK ->
 -- VIEW ------------------------------------------------------------------------
 
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
@@ -62,15 +77,17 @@ INPUT:
 signalActionOnKeyPress : Action -> Int -> Signal Action
 signalActionOnKeyPress action keyCode =
   let eventSignal = filterTrueValues --events happen when the signal is true
-          <| signalBothKeysPressed alt_KeyPressed
-          <| isKeyPressed keyCode -- the key corresponding to the keycode is pressed
+          <| signalBothKeysPressed alt_KeyPressed (isKeyPressed keyCode)
+           -- the key corresponding to the keycode is pressed
   in Signal.map (\_-> action) eventSignal --translates an event to an action
 
 signalActionOnKeyRelease : Action -> Int -> Signal Action
 signalActionOnKeyRelease action keyCode=
-  let eventSignal = filterFalseValues
-          <| signalBothKeysPressed alt_KeyPressed
-          <| isKeyPressed keyCode
+--  let eventSignal = filterFalseValues
+--          <| signalBothKeysPressed alt_KeyPressed
+--          <| isKeyPressed keyCode
+  let eventSignal = filterTrueValues
+          <| signalOneKeyNotPressed alt_KeyPressed (isKeyPressed keyCode)
   in Signal.map (\_-> action) eventSignal
 
 isKeyPressed : Int -> Signal Bool
@@ -82,10 +99,15 @@ alt_KeyPressed = Keyboard.alt
 
 signalBothKeysPressed : Signal Bool -> Signal Bool -> Signal Bool
 signalBothKeysPressed keySignal1 keySignal2 =
-  let bothKeysPressed =
-    \isPressed1-> \isPressed2 ->
-       isPressed1 && isPressed2
+  let bothKeysPressed isPressed1 isPressed2 = isPressed1 && isPressed2
   in Signal.map2 bothKeysPressed keySignal1 keySignal2
+
+signalOneKeyNotPressed : Signal Bool -> Signal Bool -> Signal Bool
+signalOneKeyNotPressed keySignal1 keySignal2 =
+  let oneKeyNotPressed isPressed1 isPressed2 = (not isPressed1) || (not isPressed2)
+  in Signal.map2 oneKeyNotPressed keySignal1 keySignal2
+
+
 
 
 filterTrueValues : Signal Bool -> Signal Bool
@@ -134,20 +156,45 @@ toggleDone =
 --    the sorting function of the feed should change to just ‘old items on top’
 --    ignoring the pinned status and reversing the date priority
 -- THIS IS A SPECIAL CASE
-changeSorting : Signal Action
-changeSorting =
-  signalActionOnKeyRelease ChangeSortingHK 83
+normalSorting : Signal Action
+normalSorting =
+  Signal.map (Debug.watch "normalSorting") (signalActionOnKeyRelease NormalSortHK 83)
+
+reverseSorting : Signal Action
+reverseSorting =
+  Signal.map (Debug.watch "reverseSorting") (signalActionOnKeyPress ReverseSortHK 83)
+
+mergedHotkeyActionSignal : Signal Action
+mergedHotkeyActionSignal =
+  Signal.mergeMany ([ focusOnNextItem
+                    , focusOnPreviousItem
+                    --, toggleTruncation
+                    --, togglePinned
+                    --, toggleDone
+                    , normalSorting
+                    , reverseSorting
+                    ])
+
+-- VIEW ------------------------------------------------------------------------
+view :  Signal.Address Action -> Model -> Html
+view address model =
+  div []
+    [ viewAddReminderDecorator address model ]
+
+viewAddReminderDecorator : Signal.Address Action -> Model -> Html
+viewAddReminderDecorator address model =
+  AddReminderDecorator.view (Signal.forwardTo address AddReminderDecoratorAction) model.addReminderDecorator
 
 -- MAIN ------------------------------------------------------------------------
-{--main : Signal Html
+main : Signal Html
 main =
   Signal.map (view actions.address) model
 
 
 model : Signal Model
-model = Signal.foldp update init actions.signal
+model = Signal.foldp update init (Signal.merge  mergedHotkeyActionSignal actions.signal)
 
 
 actions : Signal.Mailbox Action
 actions =
-  Signal.mailbox NoOp --}
+  Signal.mailbox NoOp

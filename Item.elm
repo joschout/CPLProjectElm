@@ -20,6 +20,7 @@ type alias Model =
   , date : Time -- Time is comparable
   , pinned : Bool
   , markedAsDone : Bool
+  , isFocused : Bool
   }
 
 -- UPDATE ----------------------------------------------------------------------
@@ -29,6 +30,7 @@ type Action
   | Pin Bool
   | EmailAction Email.Action
   | ReminderAction Reminder.Action
+  | Focus Bool
 
 update : Action -> Model -> Model
 update action model =
@@ -43,6 +45,8 @@ update action model =
       updateEmailAction emailAction model
     ReminderAction reminderAction ->
       updateReminderAction reminderAction model
+    Focus focusBool ->
+      { model | isFocused = focusBool }
 
 updateEmailAction : Email.Action -> Model -> Model
 updateEmailAction emailAction model =
@@ -66,11 +70,13 @@ updateReminderAction reminderAction model =
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
-  div [ itemStyle ]
-    [ viewItem address model.itemModel
-    , viewMarkAsDoneButton address model
-    , viewPinButton address model
-    , viewDate model
+  div [selectedItemStyle model.isFocused]
+    [ div [ itemStyle ]
+      [ viewItem address model.itemModel
+      , viewMarkAsDoneButton address model
+      , viewPinButton address model
+      , viewDate model
+      ]
     ]
 
 -- viewItem
@@ -119,7 +125,7 @@ viewDate : Model -> Html
 viewDate model =
   p
     []
-    [ "date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date  
+    [ "date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date
       |> text ]
 
 -- MAIN, STATE & SIGNALS -------------------------------------------------------
@@ -142,6 +148,7 @@ initModel =
   , date = TimeUtil.stringToTime "2015-01-30"
   , pinned = False
   , markedAsDone = False
+  , isFocused = False
   }
 -- UTILS -----------------------------------------------------------------------
 newReminderItem : String ->  String -> Bool -> Bool -> Model
@@ -151,8 +158,19 @@ newReminderItem body' date' pinned' markedAsDone' =
   , date = TimeUtil.stringToTime date'
   , pinned = pinned'
   , markedAsDone = markedAsDone'
+  , isFocused = False
   }
 
+selectedItemStyle : Bool -> Attribute
+selectedItemStyle isFocused =
+  case isFocused of
+    True ->
+      style
+        [ ("border-left-width", "thick")
+        , ("border-left-style", "double")
+        , ("border-left-color", "rgb(170, 255, 255)")
+        ]
+    False -> style []
 
 itemStyle : Attribute
 itemStyle =
