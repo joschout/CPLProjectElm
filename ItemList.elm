@@ -1,6 +1,6 @@
 module ItemList where
 
-import Item exposing (Model, view, newReminderItem)
+import Item exposing (Model, view, newReminderItem, toggleTruncation, Action)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 
@@ -56,17 +56,10 @@ update action model =
 -- CHANGING FOCUS --------------------------------------------------------------
 changeFocusOfModel : Int -> Model -> Model
 changeFocusOfModel newIndex model =
-  let
-      sortedToDoModel = sortModel
-                        <| filterOnDone model False
-      sortedDoneModel = sortModel
-                        <| filterOnDone model True
-      totalSortedList = sortedToDoModel.itemList ++ sortedDoneModel.itemList
-      idNewFocusedItem = getIdFromIndex newIndex totalSortedList
+  let idNewFocusedItem
+        = getIdFromIndexInUnsortedModelList newIndex model
   in { model | indexSelectedItem = newIndex,
                itemList = List.map (changeFocusOfItem idNewFocusedItem) model.itemList}
-
-
 
 changeFocusOfItem : ID -> (ID, Item.Model) -> (ID, Item.Model)
 changeFocusOfItem correctID (itemID, itemModel) =
@@ -76,8 +69,18 @@ changeFocusOfItem correctID (itemID, itemModel) =
     False ->
       (itemID, (Item.update (Item.Focus False) itemModel))
 
-getIdFromIndex : Int -> List(ID, Item.Model) -> ID
-getIdFromIndex index list =
+getIdFromIndexInUnsortedModelList : Int -> Model -> ID
+getIdFromIndexInUnsortedModelList index model =
+  let sortedToDoModel = sortModel
+                      <| filterOnDone model False
+      sortedDoneModel = sortModel
+                      <| filterOnDone model True
+      totalSortedList = sortedToDoModel.itemList ++ sortedDoneModel.itemList
+  in getIdFromIndexInSortedList index totalSortedList
+
+
+getIdFromIndexInSortedList : Int -> List(ID, Item.Model) -> ID
+getIdFromIndexInSortedList index list =
   let listElem = List.head
       <| List.reverse
       <| List.take (index + 1) list
@@ -111,21 +114,31 @@ focusOnPreviousItemAction : Model -> Action
 focusOnPreviousItemAction model =
   ChangeFocus (getPreviousIndex model)
 
-{--changeSortingAction : Model -> Action
-changeSortingAction model =
-  case model.reversedSortingOrder of
-    True ->
-      ReverseSortingOrder False
-    False ->
-      ReverseSortingOrder True--}
-
 normalSortingAction : Model -> Action
 normalSortingAction model =
-      ReverseSortingOrder False
+  ReverseSortingOrder False
 
 reverseSortingAction : Model -> Action
 reverseSortingAction model =
-      ReverseSortingOrder True
+  ReverseSortingOrder True
+
+toggleTruncationAction : Model -> Action
+toggleTruncationAction model =
+  let idSelecteditem
+      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.toggleTruncation
+
+togglePinnedAction : Model -> Action
+togglePinnedAction model =
+  let idSelecteditem
+      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.TogglePinned
+
+toggleDoneAction : Model -> Action
+toggleDoneAction model =
+  let idSelecteditem
+      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.ToggleMarkedAsDone
 
 
 

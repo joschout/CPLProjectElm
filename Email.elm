@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Events exposing (onClick)
 import String
 
+-- MODEL -----------------------------------------------------------------------
 type alias Email =
   { from: String
   , to: String
@@ -12,23 +13,31 @@ type alias Email =
   , isTruncated : Bool
   }
 
--- MODEL
 type alias Model = Email
 
--- UPDATE
+-- UPDATE ----------------------------------------------------------------------
 type Action
   = NoOp
-  | Truncate Bool
+  | ToggleTruncation
 
 update : Action -> Model -> Model
 update action model =
   case action of
     NoOp ->
       model
-    Truncate truncateBool ->
-      { model | isTruncated = truncateBool }
+    ToggleTruncation ->
+      toggleTruncation model
 
--- VIEW
+toggleTruncation : Model -> Model
+toggleTruncation model =
+  let canBeTruncated = allowedToBeTruncated model.body
+  in case canBeTruncated of
+    True ->
+      { model | isTruncated = (not model.isTruncated) }
+    False ->
+      model
+
+-- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
   div []
@@ -63,9 +72,7 @@ viewMoreButton address model =
   in case canBeTruncated of
     True ->
       button
-        [ not model.isTruncated
-          |> Truncate
-          |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
+        [ onClick address ToggleTruncation ]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
         [ text <| moreButtonText model ]
     False ->
       div [] []
@@ -83,6 +90,9 @@ moreButtonText model =
       -> "More"
     False
       -> "Less"
+-- UTILS -----------------------------------------------------------------------
+
+
 
 initModel : Model
 initModel  =

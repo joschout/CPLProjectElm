@@ -26,8 +26,8 @@ type alias Model =
 -- UPDATE ----------------------------------------------------------------------
 type Action
   = NoOp
-  | MarkAsDone Bool
-  | Pin Bool
+  | ToggleMarkedAsDone
+  | TogglePinned
   | EmailAction Email.Action
   | ReminderAction Reminder.Action
   | Focus Bool
@@ -37,16 +37,32 @@ update action model =
   case action of
     NoOp ->
       model
-    MarkAsDone markBool ->
-       { model | markedAsDone = markBool }
-    Pin pinBool ->
-      { model | pinned = pinBool }
+    ToggleMarkedAsDone ->
+       toggleMarkedAsDone model
+    TogglePinned ->
+      togglePinned model
     EmailAction emailAction ->
       updateEmailAction emailAction model
     ReminderAction reminderAction ->
       updateReminderAction reminderAction model
     Focus focusBool ->
       { model | isFocused = focusBool }
+
+togglePinned : Model -> Model
+togglePinned model =
+  case model.pinned of
+    True ->
+      { model | pinned = False }
+    False ->
+      { model | pinned = True }
+
+toggleMarkedAsDone : Model -> Model
+toggleMarkedAsDone model =
+  case model.markedAsDone of
+    True ->
+      { model | markedAsDone = False }
+    False ->
+      { model | markedAsDone = True }
 
 updateEmailAction : Email.Action -> Model -> Model
 updateEmailAction emailAction model =
@@ -92,9 +108,7 @@ viewItem address itemModel =
 viewMarkAsDoneButton : Signal.Address Action -> Model -> Html
 viewMarkAsDoneButton address model =
   button
-  [ not model.markedAsDone
-      |> MarkAsDone
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
+  [ onClick address ToggleMarkedAsDone ]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
   [ text <| markAsDoneButtonText model ]
 
 markAsDoneButtonText : Model -> String
@@ -109,9 +123,7 @@ markAsDoneButtonText model =
 viewPinButton : Signal.Address Action -> Model -> Html
 viewPinButton address model =
   button
-  [ not model.pinned
-      |> Pin
-      |> onClick address]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
+  [ onClick address TogglePinned ]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
   [ text <| pinButtonText model ]
 
 pinButtonText : Model -> String
@@ -151,6 +163,11 @@ initModel =
   , isFocused = False
   }
 -- UTILS -----------------------------------------------------------------------
+
+toggleTruncation : Action
+toggleTruncation = EmailAction (Email.ToggleTruncation)
+
+
 newReminderItem : String ->  String -> Bool -> Bool -> Model
 newReminderItem body' date' pinned' markedAsDone' =
   { itemModel = ReminderModel
@@ -160,7 +177,7 @@ newReminderItem body' date' pinned' markedAsDone' =
   , markedAsDone = markedAsDone'
   , isFocused = False
   }
-
+-- STYLE -----------------------------------------------------------------------
 selectedItemStyle : Bool -> Attribute
 selectedItemStyle isFocused =
   case isFocused of

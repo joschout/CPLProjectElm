@@ -200,6 +200,18 @@ normalSorting model =
 reverseSorting : Model -> Action
 reverseSorting model =
   ItemListAction (ItemList.reverseSortingAction model.itemList)
+
+toggleTruncation : Model -> Action
+toggleTruncation model =
+  ItemListAction (ItemList.toggleTruncationAction model.itemList)
+
+togglePinned : Model -> Action
+togglePinned model =
+  ItemListAction (ItemList.togglePinnedAction model.itemList)
+
+toggleDone : Model -> Action
+toggleDone model =
+  ItemListAction (ItemList.toggleDoneAction model.itemList)
 -- STYLE -----------------------------------------------------------------------
 
 reminderSectionStyle : Attribute

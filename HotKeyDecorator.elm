@@ -1,6 +1,6 @@
 module HotKeyDecorator where
 
-import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext, normalSorting, reverseSorting, init)
+import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext, normalSorting, reverseSorting, init, toggleTruncation, togglePinned, toggleDone)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
 import Debug
@@ -35,6 +35,12 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.focusOnPrevious model.addReminderDecorator) model.addReminderDecorator }
 --    ChangeSortingHK ->
 --      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.changeSorting model.addReminderDecorator) model.addReminderDecorator }
+    ToggleTruncationHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleTruncation model.addReminderDecorator) model.addReminderDecorator }
+    TogglePinnedHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.togglePinned model.addReminderDecorator) model.addReminderDecorator }
+    ToggleDoneHK ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleDone model.addReminderDecorator) model.addReminderDecorator }
     ReverseSortHK ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.reverseSorting model.addReminderDecorator) model.addReminderDecorator }
     NormalSortHK ->
@@ -43,12 +49,6 @@ update action model =
     AddReminderDecoratorAction addReminderDecoratorAction ->
       { model | addReminderDecorator = AddReminderDecorator.update addReminderDecoratorAction model.addReminderDecorator }
 
-    _ -> model
-    --    ToggleTruncationHK ->
-
-    --    TogglePinnedHK ->
-
-      --  ToggleDoneHK ->
 -- VIEW ------------------------------------------------------------------------
 
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
@@ -168,9 +168,9 @@ mergedHotkeyActionSignal : Signal Action
 mergedHotkeyActionSignal =
   Signal.mergeMany ([ focusOnNextItem
                     , focusOnPreviousItem
-                    --, toggleTruncation
-                    --, togglePinned
-                    --, toggleDone
+                    , toggleTruncation
+                    , togglePinned
+                    , toggleDone
                     , normalSorting
                     , reverseSorting
                     ])
