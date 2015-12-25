@@ -38,31 +38,15 @@ update action model =
     NoOp ->
       model
     ToggleMarkedAsDone ->
-       toggleMarkedAsDone model
+       { model | markedAsDone = not (model.markedAsDone) }
     TogglePinned ->
-      togglePinned model
+      { model | pinned = (not model.pinned) }
     EmailAction emailAction ->
       updateEmailAction emailAction model
     ReminderAction reminderAction ->
       updateReminderAction reminderAction model
     Focus focusBool ->
       { model | isFocused = focusBool }
-
-togglePinned : Model -> Model
-togglePinned model =
-  case model.pinned of
-    True ->
-      { model | pinned = False }
-    False ->
-      { model | pinned = True }
-
-toggleMarkedAsDone : Model -> Model
-toggleMarkedAsDone model =
-  case model.markedAsDone of
-    True ->
-      { model | markedAsDone = False }
-    False ->
-      { model | markedAsDone = True }
 
 updateEmailAction : Email.Action -> Model -> Model
 updateEmailAction emailAction model =

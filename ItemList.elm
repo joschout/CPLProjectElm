@@ -11,6 +11,7 @@ type alias Model =
    , indexSelectedItem : Int
     -- index of the selected item in the ordered list
    , reversedSortingOrder : Bool
+   , doneItemsVisible : Bool
  }
 
 type alias ID = Int
@@ -22,6 +23,7 @@ type Action
   | AddReminder String String Bool Bool -- body' date' pinned' markedAsDone
   | ChangeFocus Int
   | ReverseSortingOrder Bool
+  | ToggleVisiblityDoneItems
 
 update : Action -> Model -> Model
 update action model =
@@ -51,6 +53,9 @@ update action model =
     ReverseSortingOrder shouldBeReversed ->
       let reversedModel = { model | reversedSortingOrder = shouldBeReversed }
       in changeFocusOfModel model.indexSelectedItem reversedModel
+
+    ToggleVisiblityDoneItems ->
+      { model | doneItemsVisible = (not model.doneItemsVisible) }
 
 
 -- CHANGING FOCUS --------------------------------------------------------------
@@ -174,13 +179,19 @@ toDoHeader =
 viewDoneDiv : Signal.Address Action -> Model -> Html
 viewDoneDiv address model =
   let doneModel = filterOnDone model True
-  in case List.isEmpty doneModel.itemList of
-    True ->
-      div [] []
+  in case shouldDoneItemsBeShown doneModel of
     False ->
+      div [] []
+    True ->
       let sortedDoneModel = sortModel doneModel
           items = List.map (viewItem address) sortedDoneModel.itemList
       in div [ itemListStyle ] ([doneHeader] ++ items)
+
+shouldDoneItemsBeShown : Model -> Bool
+shouldDoneItemsBeShown doneModel =
+  let doneListNotEmpty = not (List.isEmpty doneModel.itemList)
+      doneSectionVisible = doneModel.doneItemsVisible
+  in doneListNotEmpty && doneSectionVisible
 
 doneHeader : Html
 doneHeader =

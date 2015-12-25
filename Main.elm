@@ -3,7 +3,7 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
-import ItemList exposing (Model, actionMailbox)
+import HotKeyDecorator exposing (Model, actions, view, update, init, mergedHotkeyActionSignal, Action)
 import Initial exposing (initialItemList)
 
 
@@ -67,19 +67,22 @@ import Initial exposing (initialItemList)
 main : Signal Html.Html
 main = Html.text "This should work."
        |> Signal.constant
---}
-
--- MODEL
-
--- UPDATE
-
--- VIEW
-
-
 
 main : Signal Html
 main =
   Signal.map (ItemList.view actionMailbox.address) state
 
 state : Signal ItemList.Model
-state = Signal.foldp ItemList.update initialItemList ItemList.actionSignal
+state = Signal.foldp ItemList.update initialItemList ItemList.actionSignal --}
+main : Signal Html
+main =
+  Signal.map (view actions.address) model
+
+
+model : Signal Model
+model = Signal.foldp update init (Signal.merge  mergedHotkeyActionSignal actions.signal)
+
+
+actions : Signal.Mailbox Action
+actions =
+  Signal.mailbox HotKeyDecorator.NoOp

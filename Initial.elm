@@ -92,4 +92,5 @@ initialItemList =
   , nextID = 5
   , indexSelectedItem = 0
   , reversedSortingOrder = False
+  , doneItemsVisible = True
   }

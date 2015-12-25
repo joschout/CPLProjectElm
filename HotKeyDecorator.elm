@@ -1,6 +1,8 @@
 module HotKeyDecorator where
 
-import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext, normalSorting, reverseSorting, init, toggleTruncation, togglePinned, toggleDone)
+import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
+    normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
+    toggleDone, toggleVisibilityDoneSection)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
 import Debug
@@ -23,6 +25,8 @@ type Action
   | ReverseSortHK
   | NormalSortHK
   | AddReminderDecoratorAction AddReminderDecorator.Action
+  -- EXTRA
+  | ToggleVisibilityDoneSection
 
 update : Action -> Model -> Model
 update action model =
@@ -45,10 +49,10 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.reverseSorting model.addReminderDecorator) model.addReminderDecorator }
     NormalSortHK ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.normalSorting model.addReminderDecorator) model.addReminderDecorator }
-
     AddReminderDecoratorAction addReminderDecoratorAction ->
       { model | addReminderDecorator = AddReminderDecorator.update addReminderDecoratorAction model.addReminderDecorator }
-
+    ToggleVisibilityDoneSection ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleVisibilityDoneSection) model.addReminderDecorator }
 -- VIEW ------------------------------------------------------------------------
 
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
@@ -164,6 +168,15 @@ reverseSorting : Signal Action
 reverseSorting =
   Signal.map (Debug.watch "reverseSorting") (signalActionOnKeyPress ReverseSortHK 83)
 
+-- ALT + I
+toggleVisibilityDoneSection : Signal Action
+toggleVisibilityDoneSection
+  = signalActionOnKeyPress ToggleVisibilityDoneSection 73
+
+
+
+
+--------------------------------------------------------------------------------
 mergedHotkeyActionSignal : Signal Action
 mergedHotkeyActionSignal =
   Signal.mergeMany ([ focusOnNextItem
@@ -173,6 +186,7 @@ mergedHotkeyActionSignal =
                     , toggleDone
                     , normalSorting
                     , reverseSorting
+                    , toggleVisibilityDoneSection
                     ])
 
 -- VIEW ------------------------------------------------------------------------

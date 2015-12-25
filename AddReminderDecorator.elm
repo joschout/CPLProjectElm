@@ -180,6 +180,7 @@ isValid model =
   isValidReminderBody model.reminderBody && isValidDate model.date
 
 -- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
+
 focusOnNext : Model -> Action
 focusOnNext model =
   ItemListAction (ItemList.focusOnNextItemAction model.itemList)
@@ -188,10 +189,6 @@ focusOnNext model =
 focusOnPrevious : Model -> Action
 focusOnPrevious model =
   ItemListAction (ItemList.focusOnPreviousItemAction model.itemList)
-
---changeSorting : Model -> Action
---changeSorting model =
---  ItemListAction (ItemList.changeSortingAction model.itemList)
 
 normalSorting : Model -> Action
 normalSorting model =
@@ -212,6 +209,11 @@ togglePinned model =
 toggleDone : Model -> Action
 toggleDone model =
   ItemListAction (ItemList.toggleDoneAction model.itemList)
+
+toggleVisibilityDoneSection : Action
+toggleVisibilityDoneSection  =
+  ItemListAction (ItemList.ToggleVisiblityDoneItems)
+
 -- STYLE -----------------------------------------------------------------------
 
 reminderSectionStyle : Attribute
