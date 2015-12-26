@@ -1,22 +1,33 @@
 module Initial where
 
-import Item exposing (Model)
+import Item exposing (Model, initModel)
 import TimeUtil exposing (stringToTime)
 import Email
 import Reminder
 import ItemList exposing (actionMailbox)
 import Html exposing (..)
+import Dict
+
 --------------------------------------------------------------------------------
-itemEx1 : Item.Model
-itemEx1=
-  { itemModel = Item.EmailModel emailEx1
-    --itemModel = ReminderModel Reminder.initModel
+itemTemplate : Item.Model
+itemTemplate =
+  { itemModel = Item.ReminderModel (Reminder.init "placeholder reminder body")
   , date = TimeUtil.stringToTime "2015-01-30"
   , pinned = False
   , markedAsDone = False
   , isFocused = False
   , isPastDeadline = False
+  , isSnoozed = False
+  , snoozeDateInputValue = ""
+  , snoozedUntilDate = 0
+  , snoozeInputState = Dict.empty
   }
+
+--------------------------------------------------------------------------------
+
+itemEx1 : Item.Model
+itemEx1 =
+  { itemTemplate | itemModel = Item.EmailModel emailEx1 }
 
 emailEx1 : Email.Model
 emailEx1  =
@@ -43,13 +54,9 @@ emailEx1  =
 --------------------------------------------------------------------------------
 itemEx2 : Item.Model
 itemEx2 =
-  { itemModel = Item.EmailModel emailEx2
-    --itemModel = ReminderModel Reminder.initModel
-  , date = TimeUtil.stringToTime "2015-09-30"
-  , pinned = False
-  , markedAsDone = False
-  , isFocused = False
-  , isPastDeadline = False
+  { itemTemplate
+    | itemModel = Item.EmailModel emailEx2
+    , date = TimeUtil.stringToTime "2015-09-30"
   }
 
 emailEx2 : Email.Model
@@ -63,13 +70,9 @@ emailEx2 =
 --------------------------------------------------------------------------------
 itemEx3 : Item.Model
 itemEx3 =
-    { itemModel = Item.ReminderModel reminderEx1
-      --itemModel = ReminderModel Reminder.initModel
+  { itemTemplate
+    | itemModel = Item.ReminderModel reminderEx1
     , date = TimeUtil.stringToTime "2016-09-30"
-    , pinned = False
-    , markedAsDone = False
-    , isFocused = False
-    , isPastDeadline = False
     }
 reminderEx1 : Reminder.Model
 reminderEx1 =
@@ -79,12 +82,9 @@ reminderEx1 =
 --------------------------------------------------------------------------------
 itemEx4 : Item.Model
 itemEx4 =
-  { itemModel = Item.ReminderModel reminderEx2
-  , date = TimeUtil.stringToTime "2015-09-25"
-  , pinned = False
-  , markedAsDone = False
-  , isFocused = False
-  , isPastDeadline = False
+  { itemTemplate
+    | itemModel = Item.ReminderModel reminderEx2
+    , date = TimeUtil.stringToTime "2015-09-25"
   }
 reminderEx2 : Reminder.Model
 reminderEx2 =

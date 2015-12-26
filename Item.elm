@@ -2,13 +2,14 @@ module Item where
 
 import Signal
 import Html exposing (..)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (action, attribute, class, for, id, type', value, style)
+import Html.Events exposing (on, onClick, targetValue)
 import Time exposing (Time)
-
+import String
 import Email exposing (Action, update, Model, initModel)
 import Reminder exposing (Action, update, Model, init)
 import TimeUtil exposing (timeToDateString, stringToTime, DateFormat)
+import Dict exposing (Dict)
 
 -- MODEL -----------------------------------------------------------------------
 type ItemModel
@@ -23,9 +24,18 @@ type alias Model =
   , isFocused : Bool
   -- EXTENSIONS
   , isPastDeadline : Bool
---  , isSnoozed : Bool
-  --, snoozedUntilDate : Date
+  --Snooze
+  , isSnoozed : Bool
+  , snoozeDateInputValue : String
+  , snoozedUntilDate : Time
+  , snoozeInputState : Dict String SnoozeInputState
   }
+
+-- type to represent the state of the input elements of the snooze
+type SnoozeInputState
+  = Initial
+  | HasError String
+  | IsOkay
 
 -- UPDATE ----------------------------------------------------------------------
 type Action
@@ -37,6 +47,11 @@ type Action
   | Focus Bool
   -- EXTENSIONS
   | CheckDeadline Time
+  --
+  | Snooze
+  | SetSnoozeDate String
+  | SetSnoozeInputState
+  | CheckSnoozeTime Time
 
 update : Action -> Model -> Model
 update action model =
@@ -54,7 +69,22 @@ update action model =
     Focus focusBool ->
       { model | isFocused = focusBool }
     CheckDeadline currentTime ->
-      checkIfPastDeadline currentTime model
+        let deadline = model.date
+        in { model | isPastDeadline = (deadline < currentTime) }
+    Snooze ->
+      { model |  snoozedUntilDate = TimeUtil.stringToTime model.snoozeDateInputValue }
+    SetSnoozeDate date' ->
+      { model | snoozeDateInputValue = date' }
+    SetSnoozeInputState ->
+      let newSnoozeDateInputValue = if isValidDate model.snoozeDateInputValue
+                then IsOkay
+                else HasError "Please enter a valid date"
+          snoozeInputState'
+              = Dict.fromList [("snoozeDateInputValue", newSnoozeDateInputValue)]
+      in { model | snoozeInputState = snoozeInputState' }
+    CheckSnoozeTime currentTime ->
+      let snoozeTime = model.snoozedUntilDate
+      in { model | isSnoozed = (currentTime < snoozeTime) }
 
 updateEmailAction : Email.Action -> Model -> Model
 updateEmailAction emailAction model =
@@ -75,23 +105,23 @@ updateReminderAction reminderAction model =
           =  Reminder.update reminderAction reminderModel
           |> ReminderModel }
 
-checkIfPastDeadline : Time -> Model -> Model
-checkIfPastDeadline currentTime model =
-  let deadline = model.date
-  in { model | isPastDeadline = (deadline < currentTime) }
-
 
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
-  div [selectedItemStyle model.isFocused]
-    [ div [ itemStyle model ]
-      [ viewItem address model.itemModel
-      , viewMarkAsDoneButton address model
-      , viewPinButton address model
-      , viewDate model
-      ]
-    ]
+  case model.isSnoozed of
+    False ->
+      div [selectedItemStyle model.isFocused]
+        [ div [ itemStyle model ]
+          [ viewItem address model.itemModel
+          , viewMarkAsDoneButton address model
+          , viewPinButton address model
+          , viewDate model
+          , viewSnoozeSection address model
+          ]
+        ]
+    True ->
+      div [] []
 
 -- viewItem
 viewItem : Signal.Address Action -> ItemModel -> Html
@@ -131,12 +161,53 @@ pinButtonText model =
       -> "Unpin"
     False
       -> "Pin"
+-- Date
 viewDate : Model -> Html
 viewDate model =
   p
     []
     [ "date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date
       |> text ]
+
+-- Snooze section
+viewSnoozeSection : Signal.Address Action -> Model -> Html
+viewSnoozeSection address model =
+  div [ class "container" ]
+  [  div [ attribute "role" "form" ]
+    [ dateInput address model
+    , button [ class "btn btn-default"
+              , onClick address
+                  <| if isValidDate model.snoozeDateInputValue then Snooze
+                     else SetSnoozeInputState
+              ]
+      [ text "Add" ]
+    ]
+  ]
+
+inputFunc : InputFuncParams -> Signal.Address Action -> Model -> Html
+inputFunc params address model =
+  div [ class "form-group" ]
+      [ label [ for params.id ]
+              [ text params.label ]
+      , input [ id params.id, type' params.type' --, value params.value
+              , class "form-control"
+              , on "input" targetValue
+                  (Signal.message address << params.action)
+              ]
+              []
+      ]
+
+dateInput : Signal.Address Action -> Model -> Html
+dateInput address model =
+  inputFunc { id = "date"
+            , label = "Snooze until: "
+            , type' = "date"
+            , action = SetSnoozeDate
+--            , value = if String.isEmpty model.snoozeDateInputValue
+--                      then TimeUtil.timeToDateString TimeUtil.Slash_YMD model.currentDate
+--                      else model.snoozeDateInputValue
+            } address model
+
 
 -- MAIN, STATE & SIGNALS -------------------------------------------------------
 actionMailbox : Signal.Mailbox Action
@@ -160,6 +231,10 @@ initModel =
   , markedAsDone = False
   , isFocused = False
   , isPastDeadline = False
+  , isSnoozed = False
+  , snoozeDateInputValue = ""
+  , snoozedUntilDate = 0
+  , snoozeInputState = Dict.empty
   }
 -- UTILS -----------------------------------------------------------------------
 
@@ -176,8 +251,24 @@ newReminderItem body' date' pinned' markedAsDone' =
   , markedAsDone = markedAsDone'
   , isFocused = False
   , isPastDeadline = False
+  , isSnoozed = False
+  , snoozeDateInputValue = ""
+  , snoozedUntilDate = 0
+  , snoozeInputState = Dict.empty
   }
 
+
+isValidDate : String -> Bool
+isValidDate value =
+  not (String.isEmpty value)
+
+type alias InputFuncParams =
+  { id: String -- the ID of the input
+  , label: String -- the text of the label
+  , type': String -- the type of input (text, email, etc.) Note that 'type' is a keyword
+  , action: String -> Action -- a function that takes the value of the input and turns it into an action
+--  , value: String -- the value that must be shown in the input field
+  }
 
 -- STYLE -----------------------------------------------------------------------
 selectedItemStyle : Bool -> Attribute
@@ -207,3 +298,9 @@ itemStyle model =
         , ("border-bottom-color", "rgb(250, 250, 250)")
         , backGroundColor
         ]
+snoozeSectionStyle : Attribute
+snoozeSectionStyle =
+  style
+    [ ("width", "40%")
+    , ("margin", "auto")
+    ]

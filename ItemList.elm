@@ -27,6 +27,7 @@ type Action
   -- EXTENSIONS
   | ToggleVisiblityDoneItems
   | CheckDeadlines Time
+  | CheckSnoozeTimes Time
 
 update : Action -> Model -> Model
 update action model =
@@ -65,10 +66,18 @@ update action model =
             = List.map (checkAndUpdateDeadline currentTime) model.itemList
       in { model | itemList = updatedItemList }
 
+    CheckSnoozeTimes currentTime ->
+      let updatedItemList
+          = List.map (checkSnoozeTimes currentTime) model.itemList
+      in { model | itemList = updatedItemList }
+
 checkAndUpdateDeadline : Time -> (ID, Item.Model) -> (ID, Item.Model)
 checkAndUpdateDeadline currentTime (id, itemModel) =
   (id, (Item.update (Item.CheckDeadline currentTime) itemModel))
 
+checkSnoozeTimes : Time -> (ID, Item.Model) -> (ID, Item.Model)
+checkSnoozeTimes currentTime (id, itemModel) =
+  (id, (Item.update (Item.CheckSnoozeTime currentTime) itemModel))
 
 -- CHANGING FOCUS --------------------------------------------------------------
 changeFocusOfModel : Int -> Model -> Model

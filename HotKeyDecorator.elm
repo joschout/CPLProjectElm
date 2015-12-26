@@ -2,7 +2,8 @@ module HotKeyDecorator where
 
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
-    toggleDone, toggleVisibilityDoneSection, Action, checkDeadlinesOfItems)
+    toggleDone, toggleVisibilityDoneSection, Action, checkDeadlinesOfItems,
+    checkSnoozeTimeOfItems)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
 import Time exposing (Time)
@@ -61,8 +62,10 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.ToggleReminderSectionVisibiliy) model.addReminderDecorator }
     PropagateCurrentTime currentTime ->
       let deadlinesCheckedModel =
-         { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.checkDeadlinesOfItems currentTime) model.addReminderDecorator }
-      in { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.UpdateCurrentDate currentTime) deadlinesCheckedModel.addReminderDecorator }
+            { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.checkDeadlinesOfItems currentTime) model.addReminderDecorator }
+          snoozeTimeCheckedModel =
+            { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.checkSnoozeTimeOfItems currentTime) deadlinesCheckedModel.addReminderDecorator }
+      in { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.UpdateCurrentDate currentTime) snoozeTimeCheckedModel.addReminderDecorator }
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
 {--
 How are hot keys implemented?

@@ -171,6 +171,7 @@ reminderBodyInput address model =
             , action = SetReminderBody
             , value = model.reminderBody
             } address model
+
 dateInput : Signal.Address Action -> Model -> Html
 dateInput address model =
   inputFunc { id = "date"
@@ -191,12 +192,7 @@ isValidReminderBody =
 isValidDate : String -> Bool
 isValidDate value =
   not (String.isEmpty value)
-{--  case String.toInt value of
-    Ok int ->
-      int >= 0
-    Err _ ->
-      False
---}
+
 isValid : Model -> Bool
 isValid model =
   isValidReminderBody model.reminderBody && isValidDate model.date
@@ -240,6 +236,9 @@ checkDeadlinesOfItems : Time.Time -> Action
 checkDeadlinesOfItems currentTime =
   ItemListAction (ItemList.CheckDeadlines currentTime)
 
+checkSnoozeTimeOfItems : Time.Time -> Action
+checkSnoozeTimeOfItems currentTime =
+  ItemListAction (ItemList.CheckSnoozeTimes currentTime)
 -- STYLE -----------------------------------------------------------------------
 
 reminderSectionStyle : Attribute

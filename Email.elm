@@ -5,15 +5,13 @@ import Html.Events exposing (onClick)
 import String
 
 -- MODEL -----------------------------------------------------------------------
-type alias Email =
+type alias Model =
   { from: String
   , to: String
   , title: String
   , body: String
   , isTruncated : Bool
   }
-
-type alias Model = Email
 
 -- UPDATE ----------------------------------------------------------------------
 type Action
