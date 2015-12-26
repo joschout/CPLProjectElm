@@ -3,7 +3,7 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
-import HotKeyDecorator exposing (Model, totalActionSignal, view, update, init, Action)
+import HotKeyDecorator exposing (Model, totalActionSignal, view, update, init, Action, actions)
 import Initial exposing (initialItemList)
 
 
@@ -31,13 +31,18 @@ import Initial exposing (initialItemList)
 -- * Put the current date as the default in the date picker when adding
 -- * reminders.
 -- Status: Completed / Attempted / Unattempted
--- Summary:
+-- Summary: Completed
+-- The current date is picked as default when adding reminders.
+-- Note that only dates can be filled in in the input field.
+-- If the input field is completely empty,
+-- it will be again filled in with the current date.
 
 
 -- * Add a deadline property to reminders and mark all reminders that are past
 -- * their deadline.
 -- Status: Completed / Attempted / Unattempted
--- Summary:
+-- Summary: Completed
+-- The background of reminders of which the deadlines have past are colored red.
 
 
 -- * Add a 'snooze' feature to items, to 'snooze' an item you must provide a
@@ -82,13 +87,4 @@ state : Signal ItemList.Model
 state = Signal.foldp ItemList.update initialItemList ItemList.actionSignal --}
 main : Signal Html
 main =
-  Signal.map (view actions.address) model
-
-
-model : Signal Model
-model = Signal.foldp update init totalActionSignal
-
-
-actions : Signal.Mailbox Action
-actions =
-  Signal.mailbox HotKeyDecorator.NoOp
+  Signal.map (HotKeyDecorator.view actions.address) HotKeyDecorator.model

@@ -97,4 +97,5 @@ initialItemList =
   , indexSelectedItem = 0
   , reversedSortingOrder = False
   , doneItemsVisible = True
+  , snoozedSectionVisible = False
   }

@@ -27,7 +27,7 @@ Our Model is a record with three fields
 type alias Model =
   { itemList: ItemList.Model
   , reminderBody : String -- the value of the reminderBody input
-  , date : String -- the value of the date input
+  , dateInputValue : String -- the value of the date input
   , inputState : Dict String InputState
     -- a dictionary that maps the IDs of the inputs to their state
     -- String is the Key which maps to a value of InputState
@@ -40,7 +40,7 @@ init : Model
 init =
   { itemList = initialItemList
   , reminderBody = ""
-  , date = ""
+  , dateInputValue = ""
   , inputState = Dict.empty
   , reminderSectionVisible = True
   , currentDate = 0
@@ -70,13 +70,13 @@ update action model =
       { model | reminderBody = reminderBody' }
 
     SetReminderDate date' ->
-      { model | date = date' }
+      { model | dateInputValue = date' }
 
     SetInputState ->
       let reminderBody = if isValidReminderBody model.reminderBody
                  then IsOkay
                  else HasError "Please enter a reminder message"
-          date = if isValidDate model.date
+          date = if isValidDate model.dateInputValue
                 then IsOkay
                 else HasError "Please enter a valid date"
           inputState' = Dict.fromList [ ("reminderBody", reminderBody), ("date", date)]
@@ -97,13 +97,14 @@ update action model =
 
     UpdateCurrentDate currentTime ->
       { model | currentDate = currentTime
-              , date = TimeUtil.timeToDateString TimeUtil.Dash_DMY currentTime }
-
-
+              , dateInputValue =
+                  if String.isEmpty model.dateInputValue
+                    then TimeUtil.timeToDateString TimeUtil.Dash_YMD currentTime
+                    else model.dateInputValue}
 
 submitReminder : Model -> Model
 submitReminder model =
-  let itemListAction = ItemList.AddReminder model.reminderBody model.date False False
+  let itemListAction = ItemList.AddReminder model.reminderBody model.dateInputValue False False
   in { model | itemList = ItemList.update itemListAction model.itemList}
 
 -- VIEW -----------------------------------------------------------------------
@@ -176,11 +177,12 @@ dateInput : Signal.Address Action -> Model -> Html
 dateInput address model =
   inputFunc { id = "date"
             , label = "date"
-            , type' = "text"
+            , type' = "date"
             , action = SetReminderDate
-            , value = if String.isEmpty model.date
-                      then TimeUtil.timeToDateString TimeUtil.Slash_YMD model.currentDate
-                      else model.date
+            , value = 
+               if String.isEmpty model.dateInputValue
+                then TimeUtil.timeToDateString TimeUtil.Dash_YMD model.currentDate
+                else model.dateInputValue
             } address model
 
 -- VALIDATION OF INPUT STRINGS ------------------------------------------------
@@ -195,7 +197,7 @@ isValidDate value =
 
 isValid : Model -> Bool
 isValid model =
-  isValidReminderBody model.reminderBody && isValidDate model.date
+  isValidReminderBody model.reminderBody && isValidDate model.dateInputValue
 
 -- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
 
@@ -239,6 +241,10 @@ checkDeadlinesOfItems currentTime =
 checkSnoozeTimeOfItems : Time.Time -> Action
 checkSnoozeTimeOfItems currentTime =
   ItemListAction (ItemList.CheckSnoozeTimes currentTime)
+
+toggleVisibilitySnoozedSection : Action
+toggleVisibilitySnoozedSection =
+  ItemListAction (ItemList.ToggleVisibilitySnoozedSection)
 -- STYLE -----------------------------------------------------------------------
 
 reminderSectionStyle : Attribute

@@ -9,6 +9,7 @@ import String exposing (padLeft)
 type DateFormat
   = Dash_DMY
   | Slash_YMD
+  | Dash_YMD
 
 timeToDateString : DateFormat -> Time -> String
 timeToDateString dateFormat time =
@@ -18,18 +19,30 @@ timeToDateString dateFormat time =
          yearAsInt = Date.year date
      in case dateFormat of
        Dash_DMY ->
-         combineWithDash dayAsInt monthAsInt yearAsInt
+         combineWithDashDMY dayAsInt monthAsInt yearAsInt
        Slash_YMD ->
          combineWithSlash dayAsInt monthAsInt yearAsInt
+       Dash_YMD ->
+         combineWithDashYMD dayAsInt monthAsInt yearAsInt
 
-combineWithDash : Int -> Int -> Int -> String
-combineWithDash day month year =
+combineWithDashDMY : Int -> Int -> Int -> String
+combineWithDashDMY day month year =
   let dayString = toString day
       monthString
         = toString month
           |> monthAsTwoIntegers
       yearString = toString year
   in dayString ++ "-" ++ monthString ++ "-" ++ yearString
+
+combineWithDashYMD : Int -> Int -> Int -> String
+combineWithDashYMD day month year =
+  let dayString = toString day
+      monthString
+        = toString month
+          |> monthAsTwoIntegers
+      yearString = toString year
+  in yearString ++ "-" ++ monthString ++ "-" ++ dayString
+
 
 combineWithSlash : Int -> Int -> Int -> String
 combineWithSlash day month year =

@@ -13,6 +13,7 @@ type alias Model =
     -- index of the selected item in the ordered list
    , reversedSortingOrder : Bool
    , doneItemsVisible : Bool
+   , snoozedSectionVisible : Bool
  }
 
 type alias ID = Int
@@ -26,8 +27,11 @@ type Action
   | ReverseSortingOrder Bool
   -- EXTENSIONS
   | ToggleVisiblityDoneItems
+  --
   | CheckDeadlines Time
+  --
   | CheckSnoozeTimes Time
+  | ToggleVisibilitySnoozedSection
 
 update : Action -> Model -> Model
 update action model =
@@ -70,6 +74,9 @@ update action model =
       let updatedItemList
           = List.map (checkSnoozeTimes currentTime) model.itemList
       in { model | itemList = updatedItemList }
+
+    ToggleVisibilitySnoozedSection ->
+      { model | snoozedSectionVisible = (not model.snoozedSectionVisible) }
 
 checkAndUpdateDeadline : Time -> (ID, Item.Model) -> (ID, Item.Model)
 checkAndUpdateDeadline currentTime (id, itemModel) =
@@ -174,12 +181,14 @@ view address model =
   div []
     [ viewToDoDiv address model
     , viewDoneDiv address model
+    , viewSnoozeSection address model
     ]
 
 -- VIEW TO DO SECTION
 viewToDoDiv : Signal.Address Action -> Model -> Html
 viewToDoDiv address model =
-  let toDoModel = filterOnDone model False
+  let notSnoozedModel = filterOnSnoozed model False
+      toDoModel = filterOnDone notSnoozedModel False
   in case List.isEmpty toDoModel.itemList of
     True ->
       div [] []
@@ -199,7 +208,8 @@ toDoHeader =
 -- VIEW DONE SECTION
 viewDoneDiv : Signal.Address Action -> Model -> Html
 viewDoneDiv address model =
-  let doneModel = filterOnDone model True
+  let notSnoozedModel = filterOnSnoozed model False
+      doneModel = filterOnDone notSnoozedModel True
   in case shouldDoneItemsBeShown doneModel of
     False ->
       div [] []
@@ -218,6 +228,20 @@ doneHeader : Html
 doneHeader =
   h1 [] [text "Done"]
 
+-- VIEW SNOOZED SECTION
+viewSnoozeSection : Signal.Address Action -> Model -> Html
+viewSnoozeSection address model =
+  case model.snoozedSectionVisible of
+    True ->
+      let snoozedModel = filterOnSnoozed model True
+          items = List.map (viewItem address) snoozedModel.itemList
+      in div [ itemListStyle ]  ([snoozedHeader] ++ items)
+    False ->
+      div [] []
+
+snoozedHeader : Html
+snoozedHeader =
+  h1 [] [text "Snoozed"]
 -- SIGNALS --------------------------------------------------------------------
 
 actionMailbox : Signal.Mailbox Action
@@ -275,6 +299,17 @@ sortOnDate isReversed item1 item2 =
       compare dateItem2 dateItem1
     True ->
       compare dateItem1 dateItem2
+
+
+filterOnSnoozed : Model -> Bool -> Model
+filterOnSnoozed model  shouldBeSnoozed =
+  let itemIsSnoozed = \(_, item) -> item.isSnoozed
+      itemIsNotSnoozed = \(_, item) -> not (item.isSnoozed)
+  in case shouldBeSnoozed of
+    True ->
+      { model | itemList = List.filter itemIsSnoozed model.itemList }
+    False ->
+      { model | itemList = List.filter itemIsNotSnoozed model.itemList }
 
 -- STYLE -----------------------------------------------------------------------
 itemListStyle : Attribute

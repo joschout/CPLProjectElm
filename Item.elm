@@ -109,19 +109,16 @@ updateReminderAction reminderAction model =
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
-  case model.isSnoozed of
-    False ->
-      div [selectedItemStyle model.isFocused]
-        [ div [ itemStyle model ]
-          [ viewItem address model.itemModel
-          , viewMarkAsDoneButton address model
-          , viewPinButton address model
-          , viewDate model
-          , viewSnoozeSection address model
-          ]
-        ]
-    True ->
-      div [] []
+  div [selectedItemStyle model.isFocused]
+    [ div [ itemStyle model ]
+      [ viewItem address model.itemModel
+      , viewMarkAsDoneButton address model
+      , viewPinButton address model
+      , viewDate model
+      , viewSnoozeSection address model
+      ]
+    ]
+
 
 -- viewItem
 viewItem : Signal.Address Action -> ItemModel -> Html
@@ -285,7 +282,7 @@ selectedItemStyle isFocused =
 itemStyle : Model -> Attribute
 itemStyle model =
   let backGroundColor
-        = case model.isPastDeadline of
+        = case shouldBeMarkedAsPastDeadline model of
             True ->
                 ("background-color", "rgb(227, 166, 170)")
             False ->
@@ -298,6 +295,13 @@ itemStyle model =
         , ("border-bottom-color", "rgb(250, 250, 250)")
         , backGroundColor
         ]
+shouldBeMarkedAsPastDeadline : Model -> Bool
+shouldBeMarkedAsPastDeadline model
+ = case model.itemModel of
+   ReminderModel _ ->
+     model.isPastDeadline
+   EmailModel _ -> False
+
 snoozeSectionStyle : Attribute
 snoozeSectionStyle =
   style

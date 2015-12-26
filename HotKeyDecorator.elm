@@ -3,7 +3,7 @@ module HotKeyDecorator where
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
     toggleDone, toggleVisibilityDoneSection, Action, checkDeadlinesOfItems,
-    checkSnoozeTimeOfItems)
+    checkSnoozeTimeOfItems, toggleVisibilitySnoozedSection)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
 import Time exposing (Time)
@@ -32,6 +32,7 @@ type Action
   | ToggleVisibilityDoneSection
   | ToggleVisibilityReminderSection
   | PropagateCurrentTime Time
+  | ToggleVisibilitySnoozedSection
 
 update : Action -> Model -> Model
 update action model =
@@ -66,6 +67,9 @@ update action model =
           snoozeTimeCheckedModel =
             { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.checkSnoozeTimeOfItems currentTime) deadlinesCheckedModel.addReminderDecorator }
       in { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.UpdateCurrentDate currentTime) snoozeTimeCheckedModel.addReminderDecorator }
+
+    ToggleVisibilitySnoozedSection ->
+      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleVisibilitySnoozedSection) model.addReminderDecorator }
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
 {--
 How are hot keys implemented?
@@ -187,7 +191,12 @@ toggleVisibilityDoneSection
 -- Alt + R
 toggleVisibilityReminderSection : Signal Action
 toggleVisibilityReminderSection
- = signalActionOnKeyRelease ToggleVisibilityReminderSection 82
+  = signalActionOnKeyRelease ToggleVisibilityReminderSection 82
+
+-- ALT + W
+toggleVisibilitySnoozedSection : Signal Action
+toggleVisibilitySnoozedSection
+ = signalActionOnKeyPress ToggleVisibilitySnoozedSection 87
 
 --------------------------------------------------------------------------------
 mergedHotkeyActionSignal : Signal Action
@@ -201,6 +210,7 @@ mergedHotkeyActionSignal =
                     , reverseSorting
                     , toggleVisibilityDoneSection
                     , toggleVisibilityReminderSection
+                    , toggleVisibilitySnoozedSection
                     ])
 -- TIME ------------------------------------------------------------------------
 timedActionsSignal : Signal Action

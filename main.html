@@ -11945,11 +11945,11 @@ Elm.Email.make = function (_elm) {
               ,A2(viewMoreButton,address,model)]));
    });
    var NoOp = {ctor: "NoOp"};
-   var Email = F5(function (a,b,c,d,e) {
+   var Model = F5(function (a,b,c,d,e) {
       return {from: a,to: b,title: c,body: d,isTruncated: e};
    });
    return _elm.Email.values = {_op: _op
-                              ,Email: Email
+                              ,Model: Model
                               ,NoOp: NoOp
                               ,ToggleTruncation: ToggleTruncation
                               ,update: update
@@ -11993,16 +11993,16 @@ Elm.Reminder.make = function (_elm) {
    init("Dit is een testbody."),
    actionSignal);
    var main = A2($Signal.map,view(actionMailbox.address),state);
-   var Reminder = function (a) {    return {body: a};};
+   var Model = function (a) {    return {body: a};};
    return _elm.Reminder.values = {_op: _op
-                                 ,Reminder: Reminder
+                                 ,Model: Model
                                  ,init: init
-                                 ,actionMailbox: actionMailbox
-                                 ,actionSignal: actionSignal
                                  ,NoOp: NoOp
                                  ,update: update
-                                 ,state: state
                                  ,view: view
+                                 ,state: state
+                                 ,actionMailbox: actionMailbox
+                                 ,actionSignal: actionSignal
                                  ,main: main};
 };Elm.TimeUtil = Elm.TimeUtil || {};
 Elm.TimeUtil.make = function (_elm) {
@@ -12060,7 +12060,19 @@ Elm.TimeUtil.make = function (_elm) {
       monthString,
       A2($Basics._op["++"],"/",yearString))));
    });
-   var combineWithDash = F3(function (day,month,year) {
+   var combineWithDashYMD = F3(function (day,month,year) {
+      var yearString = $Basics.toString(year);
+      var monthString = monthAsTwoIntegers($Basics.toString(month));
+      var dayString = $Basics.toString(day);
+      return A2($Basics._op["++"],
+      yearString,
+      A2($Basics._op["++"],
+      "-",
+      A2($Basics._op["++"],
+      monthString,
+      A2($Basics._op["++"],"-",dayString))));
+   });
+   var combineWithDashDMY = F3(function (day,month,year) {
       var yearString = $Basics.toString(year);
       var monthString = monthAsTwoIntegers($Basics.toString(month));
       var dayString = $Basics.toString(day);
@@ -12078,19 +12090,30 @@ Elm.TimeUtil.make = function (_elm) {
       var monthAsInt = monthToInt(date);
       var dayAsInt = $Date.day(date);
       var _p2 = dateFormat;
-      if (_p2.ctor === "Dash_DMY") {
-            return A3(combineWithDash,dayAsInt,monthAsInt,yearAsInt);
-         } else {
-            return A3(combineWithSlash,dayAsInt,monthAsInt,yearAsInt);
-         }
+      switch (_p2.ctor)
+      {case "Dash_DMY": return A3(combineWithDashDMY,
+           dayAsInt,
+           monthAsInt,
+           yearAsInt);
+         case "Slash_YMD": return A3(combineWithSlash,
+           dayAsInt,
+           monthAsInt,
+           yearAsInt);
+         default: return A3(combineWithDashYMD,
+           dayAsInt,
+           monthAsInt,
+           yearAsInt);}
    });
+   var Dash_YMD = {ctor: "Dash_YMD"};
    var Slash_YMD = {ctor: "Slash_YMD"};
    var Dash_DMY = {ctor: "Dash_DMY"};
    return _elm.TimeUtil.values = {_op: _op
                                  ,Dash_DMY: Dash_DMY
                                  ,Slash_YMD: Slash_YMD
+                                 ,Dash_YMD: Dash_YMD
                                  ,timeToDateString: timeToDateString
-                                 ,combineWithDash: combineWithDash
+                                 ,combineWithDashDMY: combineWithDashDMY
+                                 ,combineWithDashYMD: combineWithDashYMD
                                  ,combineWithSlash: combineWithSlash
                                  ,monthToInt: monthToInt
                                  ,monthAsTwoIntegers: monthAsTwoIntegers
@@ -12103,6 +12126,7 @@ Elm.Item.make = function (_elm) {
    var _U = Elm.Native.Utils.make(_elm),
    $Basics = Elm.Basics.make(_elm),
    $Debug = Elm.Debug.make(_elm),
+   $Dict = Elm.Dict.make(_elm),
    $Email = Elm.Email.make(_elm),
    $Html = Elm.Html.make(_elm),
    $Html$Attributes = Elm.Html.Attributes.make(_elm),
@@ -12112,24 +12136,49 @@ Elm.Item.make = function (_elm) {
    $Reminder = Elm.Reminder.make(_elm),
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
+   $String = Elm.String.make(_elm),
    $Time = Elm.Time.make(_elm),
    $TimeUtil = Elm.TimeUtil.make(_elm);
    var _op = {};
-   var itemStyle = $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
-                                                   ,_0: "opacity"
-                                                   ,_1: "1"}
-                                                  ,{ctor: "_Tuple2",_0: "padding",_1: "10px 10px 20px"}
-                                                  ,{ctor: "_Tuple2",_0: "border-bottom-width",_1: "thick"}
-                                                  ,{ctor: "_Tuple2",_0: "border-bottom-style",_1: "solid"}
-                                                  ,{ctor: "_Tuple2"
-                                                   ,_0: "border-bottom-color"
-                                                   ,_1: "rgb(250, 250, 250)"}
-                                                  ,{ctor: "_Tuple2"
-                                                   ,_0: "background-color"
-                                                   ,_1: "rgb(255, 255, 255)"}]));
+   var snoozeSectionStyle = $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
+                                                            ,_0: "width"
+                                                            ,_1: "40%"}
+                                                           ,{ctor: "_Tuple2",_0: "margin",_1: "auto"}]));
+   var shouldBeMarkedAsPastDeadline = function (model) {
+      var _p0 = model.itemModel;
+      if (_p0.ctor === "ReminderModel") {
+            return model.isPastDeadline;
+         } else {
+            return false;
+         }
+   };
+   var itemStyle = function (model) {
+      var backGroundColor = function () {
+         var _p1 = shouldBeMarkedAsPastDeadline(model);
+         if (_p1 === true) {
+               return {ctor: "_Tuple2"
+                      ,_0: "background-color"
+                      ,_1: "rgb(227, 166, 170)"};
+            } else {
+               return {ctor: "_Tuple2"
+                      ,_0: "border-bottom-color"
+                      ,_1: "rgb(250, 250, 250)"};
+            }
+      }();
+      return $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
+                                             ,_0: "opacity"
+                                             ,_1: "1"}
+                                            ,{ctor: "_Tuple2",_0: "padding",_1: "10px 10px 20px"}
+                                            ,{ctor: "_Tuple2",_0: "border-bottom-width",_1: "thick"}
+                                            ,{ctor: "_Tuple2",_0: "border-bottom-style",_1: "solid"}
+                                            ,{ctor: "_Tuple2"
+                                             ,_0: "border-bottom-color"
+                                             ,_1: "rgb(250, 250, 250)"}
+                                            ,backGroundColor]));
+   };
    var selectedItemStyle = function (isFocused) {
-      var _p0 = isFocused;
-      if (_p0 === true) {
+      var _p2 = isFocused;
+      if (_p2 === true) {
             return $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
                                                    ,_0: "border-left-width"
                                                    ,_1: "thick"}
@@ -12141,6 +12190,30 @@ Elm.Item.make = function (_elm) {
             return $Html$Attributes.style(_U.list([]));
          }
    };
+   var InputFuncParams = F4(function (a,b,c,d) {
+      return {id: a,label: b,type$: c,action: d};
+   });
+   var isValidDate = function (value) {
+      return $Basics.not($String.isEmpty(value));
+   };
+   var inputFunc = F3(function (params,address,model) {
+      return A2($Html.div,
+      _U.list([$Html$Attributes.$class("form-group")]),
+      _U.list([A2($Html.label,
+              _U.list([$Html$Attributes.$for(params.id)]),
+              _U.list([$Html.text(params.label)]))
+              ,A2($Html.input,
+              _U.list([$Html$Attributes.id(params.id)
+                      ,$Html$Attributes.type$(params.type$)
+                      ,$Html$Attributes.$class("form-control")
+                      ,A3($Html$Events.on,
+                      "input",
+                      $Html$Events.targetValue,
+                      function (_p3) {
+                         return A2($Signal.message,address,params.action(_p3));
+                      })]),
+              _U.list([]))]));
+   });
    var viewDate = function (model) {
       return A2($Html.p,
       _U.list([]),
@@ -12151,36 +12224,53 @@ Elm.Item.make = function (_elm) {
       model.date)))]));
    };
    var pinButtonText = function (model) {
-      var _p1 = model.pinned;
-      if (_p1 === true) {
+      var _p4 = model.pinned;
+      if (_p4 === true) {
             return "Unpin";
          } else {
             return "Pin";
          }
    };
    var markAsDoneButtonText = function (model) {
-      var _p2 = model.markedAsDone;
-      if (_p2 === true) {
+      var _p5 = model.markedAsDone;
+      if (_p5 === true) {
             return "Undo";
          } else {
             return "Mark as Done";
          }
    };
-   var toggleMarkedAsDone = function (model) {
-      var _p3 = model.markedAsDone;
-      if (_p3 === true) {
-            return _U.update(model,{markedAsDone: false});
-         } else {
-            return _U.update(model,{markedAsDone: true});
-         }
+   var CheckSnoozeTime = function (a) {
+      return {ctor: "CheckSnoozeTime",_0: a};
    };
-   var togglePinned = function (model) {
-      var _p4 = model.pinned;
-      if (_p4 === true) {
-            return _U.update(model,{pinned: false});
-         } else {
-            return _U.update(model,{pinned: true});
-         }
+   var SetSnoozeInputState = {ctor: "SetSnoozeInputState"};
+   var SetSnoozeDate = function (a) {
+      return {ctor: "SetSnoozeDate",_0: a};
+   };
+   var dateInput = F2(function (address,model) {
+      return A3(inputFunc,
+      {id: "date"
+      ,label: "Snooze until: "
+      ,type$: "date"
+      ,action: SetSnoozeDate},
+      address,
+      model);
+   });
+   var Snooze = {ctor: "Snooze"};
+   var viewSnoozeSection = F2(function (address,model) {
+      return A2($Html.div,
+      _U.list([$Html$Attributes.$class("container")]),
+      _U.list([A2($Html.div,
+      _U.list([A2($Html$Attributes.attribute,"role","form")]),
+      _U.list([A2(dateInput,address,model)
+              ,A2($Html.button,
+              _U.list([$Html$Attributes.$class("btn btn-default")
+                      ,A2($Html$Events.onClick,
+                      address,
+                      isValidDate(model.snoozeDateInputValue) ? Snooze : SetSnoozeInputState)]),
+              _U.list([$Html.text("Add")]))]))]));
+   });
+   var CheckDeadline = function (a) {
+      return {ctor: "CheckDeadline",_0: a};
    };
    var Focus = function (a) {    return {ctor: "Focus",_0: a};};
    var ReminderAction = function (a) {
@@ -12190,15 +12280,15 @@ Elm.Item.make = function (_elm) {
       return {ctor: "EmailAction",_0: a};
    };
    var viewItem = F2(function (address,itemModel) {
-      var _p5 = itemModel;
-      if (_p5.ctor === "EmailModel") {
+      var _p6 = itemModel;
+      if (_p6.ctor === "EmailModel") {
             return A2($Email.view,
             A2($Signal.forwardTo,address,EmailAction),
-            _p5._0);
+            _p6._0);
          } else {
             return A2($Reminder.view,
             A2($Signal.forwardTo,address,ReminderAction),
-            _p5._0);
+            _p6._0);
          }
    });
    var toggleTruncation = EmailAction($Email.ToggleTruncation);
@@ -12218,34 +12308,63 @@ Elm.Item.make = function (_elm) {
       return A2($Html.div,
       _U.list([selectedItemStyle(model.isFocused)]),
       _U.list([A2($Html.div,
-      _U.list([itemStyle]),
+      _U.list([itemStyle(model)]),
       _U.list([A2(viewItem,address,model.itemModel)
               ,A2(viewMarkAsDoneButton,address,model)
               ,A2(viewPinButton,address,model)
-              ,viewDate(model)]))]));
+              ,viewDate(model)
+              ,A2(viewSnoozeSection,address,model)]))]));
    });
    var NoOp = {ctor: "NoOp"};
    var actionMailbox = $Signal.mailbox(NoOp);
    var actionSignal = actionMailbox.signal;
-   var Model = F5(function (a,b,c,d,e) {
-      return {itemModel: a
-             ,date: b
-             ,pinned: c
-             ,markedAsDone: d
-             ,isFocused: e};
-   });
+   var IsOkay = {ctor: "IsOkay"};
+   var HasError = function (a) {
+      return {ctor: "HasError",_0: a};
+   };
+   var Initial = {ctor: "Initial"};
+   var Model = function (a) {
+      return function (b) {
+         return function (c) {
+            return function (d) {
+               return function (e) {
+                  return function (f) {
+                     return function (g) {
+                        return function (h) {
+                           return function (i) {
+                              return function (j) {
+                                 return {itemModel: a
+                                        ,date: b
+                                        ,pinned: c
+                                        ,markedAsDone: d
+                                        ,isFocused: e
+                                        ,isPastDeadline: f
+                                        ,isSnoozed: g
+                                        ,snoozeDateInputValue: h
+                                        ,snoozedUntilDate: i
+                                        ,snoozeInputState: j};
+                              };
+                           };
+                        };
+                     };
+                  };
+               };
+            };
+         };
+      };
+   };
    var ReminderModel = function (a) {
       return {ctor: "ReminderModel",_0: a};
    };
    var updateReminderAction = F2(function (reminderAction,model) {
-      var _p6 = model.itemModel;
-      if (_p6.ctor === "EmailModel") {
+      var _p7 = model.itemModel;
+      if (_p7.ctor === "EmailModel") {
             return model;
          } else {
             return _U.update(model,
             {itemModel: ReminderModel(A2($Reminder.update,
             reminderAction,
-            _p6._0))});
+            _p7._0))});
          }
    });
    var newReminderItem = F4(function (body$,
@@ -12256,52 +12375,86 @@ Elm.Item.make = function (_elm) {
              ,date: $TimeUtil.stringToTime(date$)
              ,pinned: pinned$
              ,markedAsDone: markedAsDone$
-             ,isFocused: false};
+             ,isFocused: false
+             ,isPastDeadline: false
+             ,isSnoozed: false
+             ,snoozeDateInputValue: ""
+             ,snoozedUntilDate: 0
+             ,snoozeInputState: $Dict.empty};
    });
    var EmailModel = function (a) {
       return {ctor: "EmailModel",_0: a};
    };
    var updateEmailAction = F2(function (emailAction,model) {
-      var _p7 = model.itemModel;
-      if (_p7.ctor === "EmailModel") {
+      var _p8 = model.itemModel;
+      if (_p8.ctor === "EmailModel") {
             return _U.update(model,
-            {itemModel: EmailModel(A2($Email.update,emailAction,_p7._0))});
+            {itemModel: EmailModel(A2($Email.update,emailAction,_p8._0))});
          } else {
             return model;
          }
    });
    var update = F2(function (action,model) {
-      var _p8 = action;
-      switch (_p8.ctor)
+      var _p9 = action;
+      switch (_p9.ctor)
       {case "NoOp": return model;
-         case "ToggleMarkedAsDone": return toggleMarkedAsDone(model);
-         case "TogglePinned": return togglePinned(model);
-         case "EmailAction": return A2(updateEmailAction,_p8._0,model);
+         case "ToggleMarkedAsDone": return _U.update(model,
+           {markedAsDone: $Basics.not(model.markedAsDone)});
+         case "TogglePinned": return _U.update(model,
+           {pinned: $Basics.not(model.pinned)});
+         case "EmailAction": return A2(updateEmailAction,_p9._0,model);
          case "ReminderAction": return A2(updateReminderAction,
-           _p8._0,
+           _p9._0,
            model);
-         default: return _U.update(model,{isFocused: _p8._0});}
+         case "Focus": return _U.update(model,{isFocused: _p9._0});
+         case "CheckDeadline": var deadline = model.date;
+           return _U.update(model,
+           {isPastDeadline: _U.cmp(deadline,_p9._0) < 0});
+         case "Snooze": return _U.update(model,
+           {snoozedUntilDate: $TimeUtil.stringToTime(model.snoozeDateInputValue)});
+         case "SetSnoozeDate": return _U.update(model,
+           {snoozeDateInputValue: _p9._0});
+         case "SetSnoozeInputState":
+         var newSnoozeDateInputValue = isValidDate(model.snoozeDateInputValue) ? IsOkay : HasError("Please enter a valid date");
+           var snoozeInputState$ = $Dict.fromList(_U.list([{ctor: "_Tuple2"
+                                                           ,_0: "snoozeDateInputValue"
+                                                           ,_1: newSnoozeDateInputValue}]));
+           return _U.update(model,{snoozeInputState: snoozeInputState$});
+         default: var snoozeTime = model.snoozedUntilDate;
+           return _U.update(model,
+           {isSnoozed: _U.cmp(_p9._0,snoozeTime) < 0});}
    });
    var initModel = {itemModel: EmailModel($Email.initModel)
                    ,date: $TimeUtil.stringToTime("2015-01-30")
                    ,pinned: false
                    ,markedAsDone: false
-                   ,isFocused: false};
+                   ,isFocused: false
+                   ,isPastDeadline: false
+                   ,isSnoozed: false
+                   ,snoozeDateInputValue: ""
+                   ,snoozedUntilDate: 0
+                   ,snoozeInputState: $Dict.empty};
    var state = A3($Signal.foldp,update,initModel,actionSignal);
    var main = A2($Signal.map,view(actionMailbox.address),state);
    return _elm.Item.values = {_op: _op
                              ,EmailModel: EmailModel
                              ,ReminderModel: ReminderModel
                              ,Model: Model
+                             ,Initial: Initial
+                             ,HasError: HasError
+                             ,IsOkay: IsOkay
                              ,NoOp: NoOp
                              ,ToggleMarkedAsDone: ToggleMarkedAsDone
                              ,TogglePinned: TogglePinned
                              ,EmailAction: EmailAction
                              ,ReminderAction: ReminderAction
                              ,Focus: Focus
+                             ,CheckDeadline: CheckDeadline
+                             ,Snooze: Snooze
+                             ,SetSnoozeDate: SetSnoozeDate
+                             ,SetSnoozeInputState: SetSnoozeInputState
+                             ,CheckSnoozeTime: CheckSnoozeTime
                              ,update: update
-                             ,togglePinned: togglePinned
-                             ,toggleMarkedAsDone: toggleMarkedAsDone
                              ,updateEmailAction: updateEmailAction
                              ,updateReminderAction: updateReminderAction
                              ,view: view
@@ -12311,6 +12464,9 @@ Elm.Item.make = function (_elm) {
                              ,viewPinButton: viewPinButton
                              ,pinButtonText: pinButtonText
                              ,viewDate: viewDate
+                             ,viewSnoozeSection: viewSnoozeSection
+                             ,inputFunc: inputFunc
+                             ,dateInput: dateInput
                              ,actionMailbox: actionMailbox
                              ,actionSignal: actionSignal
                              ,state: state
@@ -12318,8 +12474,12 @@ Elm.Item.make = function (_elm) {
                              ,initModel: initModel
                              ,toggleTruncation: toggleTruncation
                              ,newReminderItem: newReminderItem
+                             ,isValidDate: isValidDate
+                             ,InputFuncParams: InputFuncParams
                              ,selectedItemStyle: selectedItemStyle
-                             ,itemStyle: itemStyle};
+                             ,itemStyle: itemStyle
+                             ,shouldBeMarkedAsPastDeadline: shouldBeMarkedAsPastDeadline
+                             ,snoozeSectionStyle: snoozeSectionStyle};
 };Elm.ItemList = Elm.ItemList || {};
 Elm.ItemList.make = function (_elm) {
    "use strict";
@@ -12334,40 +12494,59 @@ Elm.ItemList.make = function (_elm) {
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
+   $Signal = Elm.Signal.make(_elm),
+   $Time = Elm.Time.make(_elm);
    var _op = {};
    var itemListStyle = $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
                                                        ,_0: "width"
                                                        ,_1: "40%"}
                                                       ,{ctor: "_Tuple2",_0: "margin",_1: "auto"}]));
+   var filterOnSnoozed = F2(function (model,shouldBeSnoozed) {
+      var itemIsNotSnoozed = function (_p0) {
+         var _p1 = _p0;
+         return $Basics.not(_p1._1.isSnoozed);
+      };
+      var itemIsSnoozed = function (_p2) {
+         var _p3 = _p2;
+         return _p3._1.isSnoozed;
+      };
+      var _p4 = shouldBeSnoozed;
+      if (_p4 === true) {
+            return _U.update(model,
+            {itemList: A2($List.filter,itemIsSnoozed,model.itemList)});
+         } else {
+            return _U.update(model,
+            {itemList: A2($List.filter,itemIsNotSnoozed,model.itemList)});
+         }
+   });
    var sortOnDate = F3(function (isReversed,item1,item2) {
       var dateItem2 = item2.date;
       var dateItem1 = item1.date;
-      var _p0 = isReversed;
-      if (_p0 === false) {
+      var _p5 = isReversed;
+      if (_p5 === false) {
             return A2($Basics.compare,dateItem2,dateItem1);
          } else {
             return A2($Basics.compare,dateItem1,dateItem2);
          }
    });
    var sortItemModel = F3(function (isReversed,item1,item2) {
-      var _p1 = isReversed;
-      if (_p1 === false) {
+      var _p6 = isReversed;
+      if (_p6 === false) {
             var isPinned2 = item2.pinned;
             var isPinned1 = item1.pinned;
-            var _p2 = {ctor: "_Tuple2",_0: isPinned1,_1: isPinned2};
-            _v2_2: do {
-               if (_p2._0 === true) {
-                     if (_p2._1 === false) {
+            var _p7 = {ctor: "_Tuple2",_0: isPinned1,_1: isPinned2};
+            _v5_2: do {
+               if (_p7._0 === true) {
+                     if (_p7._1 === false) {
                            return $Basics.LT;
                         } else {
-                           break _v2_2;
+                           break _v5_2;
                         }
                   } else {
-                     if (_p2._1 === true) {
+                     if (_p7._1 === true) {
                            return $Basics.GT;
                         } else {
-                           break _v2_2;
+                           break _v5_2;
                         }
                   }
             } while (false);
@@ -12376,10 +12555,10 @@ Elm.ItemList.make = function (_elm) {
             return A3(sortOnDate,isReversed,item1,item2);
          }
    });
-   var sortOnItem = F3(function (isReversed,_p4,_p3) {
-      var _p5 = _p4;
-      var _p6 = _p3;
-      return A3(sortItemModel,isReversed,_p5._1,_p6._1);
+   var sortOnItem = F3(function (isReversed,_p9,_p8) {
+      var _p10 = _p9;
+      var _p11 = _p8;
+      return A3(sortItemModel,isReversed,_p10._1,_p11._1);
    });
    var sortModel = function (model) {
       return _U.update(model,
@@ -12388,16 +12567,16 @@ Elm.ItemList.make = function (_elm) {
       model.itemList)});
    };
    var filterOnDone = F2(function (model,shouldBeDone) {
-      var itemIsNotDone = function (_p7) {
-         var _p8 = _p7;
-         return $Basics.not(_p8._1.markedAsDone);
+      var itemIsNotDone = function (_p12) {
+         var _p13 = _p12;
+         return $Basics.not(_p13._1.markedAsDone);
       };
-      var itemIsDone = function (_p9) {
-         var _p10 = _p9;
-         return _p10._1.markedAsDone;
+      var itemIsDone = function (_p14) {
+         var _p15 = _p14;
+         return _p15._1.markedAsDone;
       };
-      var _p11 = shouldBeDone;
-      if (_p11 === true) {
+      var _p16 = shouldBeDone;
+      if (_p16 === true) {
             return _U.update(model,
             {itemList: A2($List.filter,itemIsDone,model.itemList)});
          } else {
@@ -12405,9 +12584,17 @@ Elm.ItemList.make = function (_elm) {
             {itemList: A2($List.filter,itemIsNotDone,model.itemList)});
          }
    });
+   var snoozedHeader = A2($Html.h1,
+   _U.list([]),
+   _U.list([$Html.text("Snoozed")]));
    var doneHeader = A2($Html.h1,
    _U.list([]),
    _U.list([$Html.text("Done")]));
+   var shouldDoneItemsBeShown = function (doneModel) {
+      var doneSectionVisible = doneModel.doneItemsVisible;
+      var doneListNotEmpty = $Basics.not($List.isEmpty(doneModel.itemList));
+      return doneListNotEmpty && doneSectionVisible;
+   };
    var toDoHeader = A2($Html.h1,
    _U.list([]),
    _U.list([$Html.text("To do")]));
@@ -12428,9 +12615,9 @@ Elm.ItemList.make = function (_elm) {
       var listElem = $List.head($List.reverse(A2($List.take,
       index + 1,
       list)));
-      var _p12 = listElem;
-      if (_p12.ctor === "Just") {
-            return _p12._0._0;
+      var _p17 = listElem;
+      if (_p17.ctor === "Just") {
+            return _p17._0._0;
          } else {
             return -1;
          }
@@ -12444,19 +12631,19 @@ Elm.ItemList.make = function (_elm) {
       sortedDoneModel.itemList);
       return A2(getIdFromIndexInSortedList,index,totalSortedList);
    });
-   var changeFocusOfItem = F2(function (correctID,_p13) {
-      var _p14 = _p13;
-      var _p17 = _p14._1;
-      var _p16 = _p14._0;
-      var _p15 = _U.eq(correctID,_p16);
-      if (_p15 === true) {
+   var changeFocusOfItem = F2(function (correctID,_p18) {
+      var _p19 = _p18;
+      var _p22 = _p19._1;
+      var _p21 = _p19._0;
+      var _p20 = _U.eq(correctID,_p21);
+      if (_p20 === true) {
             return {ctor: "_Tuple2"
-                   ,_0: _p16
-                   ,_1: A2($Item.update,$Item.Focus(true),_p17)};
+                   ,_0: _p21
+                   ,_1: A2($Item.update,$Item.Focus(true),_p22)};
          } else {
             return {ctor: "_Tuple2"
-                   ,_0: _p16
-                   ,_1: A2($Item.update,$Item.Focus(false),_p17)};
+                   ,_0: _p21
+                   ,_1: A2($Item.update,$Item.Focus(false),_p22)};
          }
    });
    var changeFocusOfModel = F2(function (newIndex,model) {
@@ -12469,19 +12656,33 @@ Elm.ItemList.make = function (_elm) {
       changeFocusOfItem(idNewFocusedItem),
       model.itemList)});
    });
+   var checkSnoozeTimes = F2(function (currentTime,_p23) {
+      var _p24 = _p23;
+      return {ctor: "_Tuple2"
+             ,_0: _p24._0
+             ,_1: A2($Item.update,
+             $Item.CheckSnoozeTime(currentTime),
+             _p24._1)};
+   });
+   var checkAndUpdateDeadline = F2(function (currentTime,_p25) {
+      var _p26 = _p25;
+      return {ctor: "_Tuple2"
+             ,_0: _p26._0
+             ,_1: A2($Item.update,$Item.CheckDeadline(currentTime),_p26._1)};
+   });
    var update = F2(function (action,model) {
-      var _p18 = action;
-      switch (_p18.ctor)
+      var _p27 = action;
+      switch (_p27.ctor)
       {case "NoOp": return model;
-         case "ItemAction": var updateItem = function (_p19) {
-              var _p20 = _p19;
-              var _p22 = _p20._1;
-              var _p21 = _p20._0;
-              return _U.eq(_p21,_p18._0) ? {ctor: "_Tuple2"
-                                           ,_0: _p21
-                                           ,_1: A2($Item.update,_p18._1,_p22)} : {ctor: "_Tuple2"
-                                                                                 ,_0: _p21
-                                                                                 ,_1: _p22};
+         case "ItemAction": var updateItem = function (_p28) {
+              var _p29 = _p28;
+              var _p31 = _p29._1;
+              var _p30 = _p29._0;
+              return _U.eq(_p30,_p27._0) ? {ctor: "_Tuple2"
+                                           ,_0: _p30
+                                           ,_1: A2($Item.update,_p27._1,_p31)} : {ctor: "_Tuple2"
+                                                                                 ,_0: _p30
+                                                                                 ,_1: _p31};
            };
            var updatedModel = _U.update(model,
            {itemList: A2($List.map,updateItem,model.itemList)});
@@ -12489,10 +12690,10 @@ Elm.ItemList.make = function (_elm) {
            model.indexSelectedItem,
            updatedModel);
          case "AddReminder": var newReminder = A4($Item.newReminderItem,
-           _p18._0,
-           _p18._1,
-           _p18._2,
-           _p18._3);
+           _p27._0,
+           _p27._1,
+           _p27._2,
+           _p27._3);
            var newItem = {ctor: "_Tuple2"
                          ,_0: model.nextID
                          ,_1: newReminder};
@@ -12501,13 +12702,33 @@ Elm.ItemList.make = function (_elm) {
            _U.list([newItem]));
            return _U.update(model,
            {itemList: newItemList,nextID: model.nextID + 1});
-         case "ChangeFocus": return A2(changeFocusOfModel,_p18._0,model);
-         default: var reversedModel = _U.update(model,
-           {reversedSortingOrder: _p18._0});
+         case "ChangeFocus": return A2(changeFocusOfModel,_p27._0,model);
+         case "ReverseSortingOrder": var reversedModel = _U.update(model,
+           {reversedSortingOrder: _p27._0});
            return A2(changeFocusOfModel,
            model.indexSelectedItem,
-           reversedModel);}
+           reversedModel);
+         case "ToggleVisiblityDoneItems": return _U.update(model,
+           {doneItemsVisible: $Basics.not(model.doneItemsVisible)});
+         case "CheckDeadlines": var updatedItemList = A2($List.map,
+           checkAndUpdateDeadline(_p27._0),
+           model.itemList);
+           return _U.update(model,{itemList: updatedItemList});
+         case "CheckSnoozeTimes": var updatedItemList = A2($List.map,
+           checkSnoozeTimes(_p27._0),
+           model.itemList);
+           return _U.update(model,{itemList: updatedItemList});
+         default: return _U.update(model,
+           {snoozedSectionVisible: $Basics.not(model.snoozedSectionVisible)});}
    });
+   var ToggleVisibilitySnoozedSection = {ctor: "ToggleVisibilitySnoozedSection"};
+   var CheckSnoozeTimes = function (a) {
+      return {ctor: "CheckSnoozeTimes",_0: a};
+   };
+   var CheckDeadlines = function (a) {
+      return {ctor: "CheckDeadlines",_0: a};
+   };
+   var ToggleVisiblityDoneItems = {ctor: "ToggleVisiblityDoneItems"};
    var ReverseSortingOrder = function (a) {
       return {ctor: "ReverseSortingOrder",_0: a};
    };
@@ -12550,16 +12771,17 @@ Elm.ItemList.make = function (_elm) {
       model);
       return A2(ItemAction,idSelecteditem,$Item.ToggleMarkedAsDone);
    };
-   var viewItem = F2(function (address,_p23) {
-      var _p24 = _p23;
+   var viewItem = F2(function (address,_p32) {
+      var _p33 = _p32;
       return A2($Item.view,
-      A2($Signal.forwardTo,address,ItemAction(_p24._0)),
-      _p24._1);
+      A2($Signal.forwardTo,address,ItemAction(_p33._0)),
+      _p33._1);
    });
    var viewToDoDiv = F2(function (address,model) {
-      var toDoModel = A2(filterOnDone,model,false);
-      var _p25 = $List.isEmpty(toDoModel.itemList);
-      if (_p25 === true) {
+      var notSnoozedModel = A2(filterOnSnoozed,model,false);
+      var toDoModel = A2(filterOnDone,notSnoozedModel,false);
+      var _p34 = $List.isEmpty(toDoModel.itemList);
+      if (_p34 === true) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedToDoModel = sortModel(toDoModel);
@@ -12572,9 +12794,10 @@ Elm.ItemList.make = function (_elm) {
          }
    });
    var viewDoneDiv = F2(function (address,model) {
-      var doneModel = A2(filterOnDone,model,true);
-      var _p26 = $List.isEmpty(doneModel.itemList);
-      if (_p26 === true) {
+      var notSnoozedModel = A2(filterOnSnoozed,model,false);
+      var doneModel = A2(filterOnDone,notSnoozedModel,true);
+      var _p35 = shouldDoneItemsBeShown(doneModel);
+      if (_p35 === false) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedDoneModel = sortModel(doneModel);
@@ -12586,20 +12809,37 @@ Elm.ItemList.make = function (_elm) {
             A2($Basics._op["++"],_U.list([doneHeader]),items));
          }
    });
+   var viewSnoozeSection = F2(function (address,model) {
+      var _p36 = model.snoozedSectionVisible;
+      if (_p36 === true) {
+            var snoozedModel = A2(filterOnSnoozed,model,true);
+            var items = A2($List.map,
+            viewItem(address),
+            snoozedModel.itemList);
+            return A2($Html.div,
+            _U.list([itemListStyle]),
+            A2($Basics._op["++"],_U.list([snoozedHeader]),items));
+         } else {
+            return A2($Html.div,_U.list([]),_U.list([]));
+         }
+   });
    var view = F2(function (address,model) {
       return A2($Html.div,
       _U.list([]),
       _U.list([A2(viewToDoDiv,address,model)
-              ,A2(viewDoneDiv,address,model)]));
+              ,A2(viewDoneDiv,address,model)
+              ,A2(viewSnoozeSection,address,model)]));
    });
    var NoOp = {ctor: "NoOp"};
    var actionMailbox = $Signal.mailbox(NoOp);
    var actionSignal = actionMailbox.signal;
-   var Model = F4(function (a,b,c,d) {
+   var Model = F6(function (a,b,c,d,e,f) {
       return {itemList: a
              ,nextID: b
              ,indexSelectedItem: c
-             ,reversedSortingOrder: d};
+             ,reversedSortingOrder: d
+             ,doneItemsVisible: e
+             ,snoozedSectionVisible: f};
    });
    return _elm.ItemList.values = {_op: _op
                                  ,Model: Model
@@ -12608,7 +12848,13 @@ Elm.ItemList.make = function (_elm) {
                                  ,AddReminder: AddReminder
                                  ,ChangeFocus: ChangeFocus
                                  ,ReverseSortingOrder: ReverseSortingOrder
+                                 ,ToggleVisiblityDoneItems: ToggleVisiblityDoneItems
+                                 ,CheckDeadlines: CheckDeadlines
+                                 ,CheckSnoozeTimes: CheckSnoozeTimes
+                                 ,ToggleVisibilitySnoozedSection: ToggleVisibilitySnoozedSection
                                  ,update: update
+                                 ,checkAndUpdateDeadline: checkAndUpdateDeadline
+                                 ,checkSnoozeTimes: checkSnoozeTimes
                                  ,changeFocusOfModel: changeFocusOfModel
                                  ,changeFocusOfItem: changeFocusOfItem
                                  ,getIdFromIndexInUnsortedModelList: getIdFromIndexInUnsortedModelList
@@ -12627,7 +12873,10 @@ Elm.ItemList.make = function (_elm) {
                                  ,viewItem: viewItem
                                  ,toDoHeader: toDoHeader
                                  ,viewDoneDiv: viewDoneDiv
+                                 ,shouldDoneItemsBeShown: shouldDoneItemsBeShown
                                  ,doneHeader: doneHeader
+                                 ,viewSnoozeSection: viewSnoozeSection
+                                 ,snoozedHeader: snoozedHeader
                                  ,actionMailbox: actionMailbox
                                  ,actionSignal: actionSignal
                                  ,filterOnDone: filterOnDone
@@ -12635,6 +12884,7 @@ Elm.ItemList.make = function (_elm) {
                                  ,sortOnItem: sortOnItem
                                  ,sortItemModel: sortItemModel
                                  ,sortOnDate: sortOnDate
+                                 ,filterOnSnoozed: filterOnSnoozed
                                  ,itemListStyle: itemListStyle};
 };Elm.Initial = Elm.Initial || {};
 Elm.Initial.make = function (_elm) {
@@ -12644,6 +12894,7 @@ Elm.Initial.make = function (_elm) {
    var _U = Elm.Native.Utils.make(_elm),
    $Basics = Elm.Basics.make(_elm),
    $Debug = Elm.Debug.make(_elm),
+   $Dict = Elm.Dict.make(_elm),
    $Email = Elm.Email.make(_elm),
    $Item = Elm.Item.make(_elm),
    $ItemList = Elm.ItemList.make(_elm),
@@ -12655,37 +12906,38 @@ Elm.Initial.make = function (_elm) {
    $TimeUtil = Elm.TimeUtil.make(_elm);
    var _op = {};
    var reminderEx2 = {body: "Groceries"};
-   var itemEx4 = {itemModel: $Item.ReminderModel(reminderEx2)
-                 ,date: $TimeUtil.stringToTime("2015-09-25")
-                 ,pinned: false
-                 ,markedAsDone: false
-                 ,isFocused: false};
    var reminderEx1 = {body: "Take out the trash"};
-   var itemEx3 = {itemModel: $Item.ReminderModel(reminderEx1)
-                 ,date: $TimeUtil.stringToTime("2016-09-30")
-                 ,pinned: false
-                 ,markedAsDone: false
-                 ,isFocused: false};
    var emailEx2 = {from: "hello@test.me"
                   ,to: "goodbye@test.me"
                   ,title: "Shorter than 200"
                   ,body: "This is the body of an email with less than 200 characters."
                   ,isTruncated: false};
-   var itemEx2 = {itemModel: $Item.EmailModel(emailEx2)
-                 ,date: $TimeUtil.stringToTime("2015-09-30")
-                 ,pinned: false
-                 ,markedAsDone: false
-                 ,isFocused: false};
    var emailEx1 = {from: "bossman@corporate.me"
                   ,to: "manager@corporate.me"
                   ,title: "Corporate Ipsum"
                   ,body: "Collaboratively administrate empowered markets via plug-and-play\n              networks. Dynamically procrastinate B2C users after installed base\n              benefits. Dramatically visualize customer directed convergence without\n              revolutionary ROI.\n\n              Efficiently unleash cross-media information without cross-media\n              value. Quickly maximize timely deliverables for real-time\n              schemas. Dramatically maintain clicks-and-mortar solutions\n              without functional solutions.\n\n              Completely synergize resource taxing relationships via premier\n              niche markets. Professionally cultivate one-to-one customer\n              service with robust ideas. Dynamically innovate\n              resource-leveling customer service for state of the art customer\n              service."
                   ,isTruncated: true};
-   var itemEx1 = {itemModel: $Item.EmailModel(emailEx1)
-                 ,date: $TimeUtil.stringToTime("2015-01-30")
-                 ,pinned: false
-                 ,markedAsDone: false
-                 ,isFocused: false};
+   var itemTemplate = {itemModel: $Item.ReminderModel($Reminder.init("placeholder reminder body"))
+                      ,date: $TimeUtil.stringToTime("2015-01-30")
+                      ,pinned: false
+                      ,markedAsDone: false
+                      ,isFocused: false
+                      ,isPastDeadline: false
+                      ,isSnoozed: false
+                      ,snoozeDateInputValue: ""
+                      ,snoozedUntilDate: 0
+                      ,snoozeInputState: $Dict.empty};
+   var itemEx1 = _U.update(itemTemplate,
+   {itemModel: $Item.EmailModel(emailEx1)});
+   var itemEx2 = _U.update(itemTemplate,
+   {itemModel: $Item.EmailModel(emailEx2)
+   ,date: $TimeUtil.stringToTime("2015-09-30")});
+   var itemEx3 = _U.update(itemTemplate,
+   {itemModel: $Item.ReminderModel(reminderEx1)
+   ,date: $TimeUtil.stringToTime("2016-09-30")});
+   var itemEx4 = _U.update(itemTemplate,
+   {itemModel: $Item.ReminderModel(reminderEx2)
+   ,date: $TimeUtil.stringToTime("2015-09-25")});
    var initialItemList = {itemList: _U.list([{ctor: "_Tuple2"
                                              ,_0: 1
                                              ,_1: itemEx1}
@@ -12694,8 +12946,11 @@ Elm.Initial.make = function (_elm) {
                                             ,{ctor: "_Tuple2",_0: 4,_1: itemEx4}])
                          ,nextID: 5
                          ,indexSelectedItem: 0
-                         ,reversedSortingOrder: false};
+                         ,reversedSortingOrder: false
+                         ,doneItemsVisible: true
+                         ,snoozedSectionVisible: false};
    return _elm.Initial.values = {_op: _op
+                                ,itemTemplate: itemTemplate
                                 ,itemEx1: itemEx1
                                 ,emailEx1: emailEx1
                                 ,itemEx2: itemEx2
@@ -12724,7 +12979,9 @@ Elm.AddReminderDecorator.make = function (_elm) {
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
-   $String = Elm.String.make(_elm);
+   $String = Elm.String.make(_elm),
+   $Time = Elm.Time.make(_elm),
+   $TimeUtil = Elm.TimeUtil.make(_elm);
    var _op = {};
    var reminderSectionStyle = $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
                                                               ,_0: "width"
@@ -12737,7 +12994,7 @@ Elm.AddReminderDecorator.make = function (_elm) {
       return $Basics.not($String.isEmpty(_p0));
    };
    var isValid = function (model) {
-      return isValidReminderBody(model.reminderBody) && isValidDate(model.date);
+      return isValidReminderBody(model.reminderBody) && isValidDate(model.dateInputValue);
    };
    var inputFunc = F3(function (params,address,model) {
       return A2($Html.div,
@@ -12748,6 +13005,7 @@ Elm.AddReminderDecorator.make = function (_elm) {
               ,A2($Html.input,
               _U.list([$Html$Attributes.id(params.id)
                       ,$Html$Attributes.type$(params.type$)
+                      ,$Html$Attributes.value(params.value)
                       ,$Html$Attributes.$class("form-control")
                       ,A3($Html$Events.on,
                       "input",
@@ -12757,8 +13015,8 @@ Elm.AddReminderDecorator.make = function (_elm) {
                       })]),
               _U.list([]))]));
    });
-   var InputFuncParams = F4(function (a,b,c,d) {
-      return {id: a,label: b,type$: c,action: d};
+   var InputFuncParams = F5(function (a,b,c,d,e) {
+      return {id: a,label: b,type$: c,action: d,value: e};
    });
    var reminderHeader = A2($Html.h1,
    _U.list([]),
@@ -12766,12 +13024,16 @@ Elm.AddReminderDecorator.make = function (_elm) {
    var submitReminder = function (model) {
       var itemListAction = A4($ItemList.AddReminder,
       model.reminderBody,
-      model.date,
+      model.dateInputValue,
       false,
       false);
       return _U.update(model,
       {itemList: A2($ItemList.update,itemListAction,model.itemList)});
    };
+   var UpdateCurrentDate = function (a) {
+      return {ctor: "UpdateCurrentDate",_0: a};
+   };
+   var ToggleReminderSectionVisibiliy = {ctor: "ToggleReminderSectionVisibiliy"};
    var SetItemList = function (a) {
       return {ctor: "SetItemList",_0: a};
    };
@@ -12804,37 +13066,64 @@ Elm.AddReminderDecorator.make = function (_elm) {
    var toggleDone = function (model) {
       return ItemListAction($ItemList.toggleDoneAction(model.itemList));
    };
+   var toggleVisibilityDoneSection = ItemListAction($ItemList.ToggleVisiblityDoneItems);
+   var checkDeadlinesOfItems = function (currentTime) {
+      return ItemListAction($ItemList.CheckDeadlines(currentTime));
+   };
+   var checkSnoozeTimeOfItems = function (currentTime) {
+      return ItemListAction($ItemList.CheckSnoozeTimes(currentTime));
+   };
+   var toggleVisibilitySnoozedSection = ItemListAction($ItemList.ToggleVisibilitySnoozedSection);
    var SubmitReminder = {ctor: "SubmitReminder"};
    var SetInputState = {ctor: "SetInputState"};
    var SetReminderDate = function (a) {
       return {ctor: "SetReminderDate",_0: a};
    };
-   var dateInput = inputFunc({id: "date"
-                             ,label: "date"
-                             ,type$: "date"
-                             ,action: SetReminderDate});
+   var dateInput = F2(function (address,model) {
+      return A3(inputFunc,
+      {id: "date"
+      ,label: "date"
+      ,type$: "date"
+      ,action: SetReminderDate
+      ,value: $String.isEmpty(model.dateInputValue) ? A2($TimeUtil.timeToDateString,
+      $TimeUtil.Dash_YMD,
+      model.currentDate) : model.dateInputValue},
+      address,
+      model);
+   });
    var SetReminderBody = function (a) {
       return {ctor: "SetReminderBody",_0: a};
    };
-   var reminderBodyInput = inputFunc({id: "reminderBody"
-                                     ,label: "Reminder message"
-                                     ,type$: "text"
-                                     ,action: SetReminderBody});
+   var reminderBodyInput = F2(function (address,model) {
+      return A3(inputFunc,
+      {id: "reminderBody"
+      ,label: "Reminder message"
+      ,type$: "text"
+      ,action: SetReminderBody
+      ,value: model.reminderBody},
+      address,
+      model);
+   });
    var viewReminder = F2(function (address,model) {
-      return A2($Html.div,
-      _U.list([$Html$Attributes.$class("container")
-              ,reminderSectionStyle]),
-      _U.list([reminderHeader
-              ,A2($Html.div,
-              _U.list([A2($Html$Attributes.attribute,"role","form")]),
-              _U.list([A2(reminderBodyInput,address,model)
-                      ,A2(dateInput,address,model)
-                      ,A2($Html.button,
-                      _U.list([$Html$Attributes.$class("btn btn-default")
-                              ,A2($Html$Events.onClick,
-                              address,
-                              isValid(model) ? SubmitReminder : SetInputState)]),
-                      _U.list([$Html.text("Add")]))]))]));
+      var _p2 = model.reminderSectionVisible;
+      if (_p2 === true) {
+            return A2($Html.div,
+            _U.list([$Html$Attributes.$class("container")
+                    ,reminderSectionStyle]),
+            _U.list([reminderHeader
+                    ,A2($Html.div,
+                    _U.list([A2($Html$Attributes.attribute,"role","form")]),
+                    _U.list([A2(reminderBodyInput,address,model)
+                            ,A2(dateInput,address,model)
+                            ,A2($Html.button,
+                            _U.list([$Html$Attributes.$class("btn btn-default")
+                                    ,A2($Html$Events.onClick,
+                                    address,
+                                    isValid(model) ? SubmitReminder : SetInputState)]),
+                            _U.list([$Html.text("Add")]))]))]));
+         } else {
+            return A2($Html.div,_U.list([]),_U.list([]));
+         }
    });
    var view = F2(function (address,model) {
       return A2($Html.div,
@@ -12846,24 +13135,32 @@ Elm.AddReminderDecorator.make = function (_elm) {
    var actions = $Signal.mailbox(NoOp);
    var init = {itemList: $Initial.initialItemList
               ,reminderBody: ""
-              ,date: ""
-              ,inputState: $Dict.empty};
-   var Model = F4(function (a,b,c,d) {
-      return {itemList: a,reminderBody: b,date: c,inputState: d};
+              ,dateInputValue: ""
+              ,inputState: $Dict.empty
+              ,reminderSectionVisible: true
+              ,currentDate: 0};
+   var Model = F6(function (a,b,c,d,e,f) {
+      return {itemList: a
+             ,reminderBody: b
+             ,dateInputValue: c
+             ,inputState: d
+             ,reminderSectionVisible: e
+             ,currentDate: f};
    });
    var IsOkay = {ctor: "IsOkay"};
    var HasError = function (a) {
       return {ctor: "HasError",_0: a};
    };
    var update = F2(function (action,model) {
-      var _p2 = action;
-      switch (_p2.ctor)
+      var _p3 = action;
+      switch (_p3.ctor)
       {case "NoOp": return model;
          case "SetReminderBody": return _U.update(model,
-           {reminderBody: _p2._0});
-         case "SetReminderDate": return _U.update(model,{date: _p2._0});
+           {reminderBody: _p3._0});
+         case "SetReminderDate": return _U.update(model,
+           {dateInputValue: _p3._0});
          case "SetInputState":
-         var date = isValidDate(model.date) ? IsOkay : HasError("Please enter a valid date");
+         var date = isValidDate(model.dateInputValue) ? IsOkay : HasError("Please enter a valid date");
            var reminderBody = isValidReminderBody(model.reminderBody) ? IsOkay : HasError("Please enter a reminder message");
            var inputState$ = $Dict.fromList(_U.list([{ctor: "_Tuple2"
                                                      ,_0: "reminderBody"
@@ -12872,8 +13169,16 @@ Elm.AddReminderDecorator.make = function (_elm) {
            return _U.update(model,{inputState: inputState$});
          case "SubmitReminder": return submitReminder(model);
          case "ItemListAction": return _U.update(model,
-           {itemList: A2($ItemList.update,_p2._0,model.itemList)});
-         default: return _U.update(model,{itemList: _p2._0});}
+           {itemList: A2($ItemList.update,_p3._0,model.itemList)});
+         case "SetItemList": return _U.update(model,{itemList: _p3._0});
+         case "ToggleReminderSectionVisibiliy": return _U.update(model,
+           {reminderSectionVisible: $Basics.not(model.reminderSectionVisible)});
+         default: var _p4 = _p3._0;
+           return _U.update(model,
+           {currentDate: _p4
+           ,dateInputValue: $String.isEmpty(model.dateInputValue) ? A2($TimeUtil.timeToDateString,
+           $TimeUtil.Dash_YMD,
+           _p4) : model.dateInputValue});}
    });
    var model = A3($Signal.foldp,update,init,actions.signal);
    var main = A2($Signal.map,view(actions.address),model);
@@ -12891,6 +13196,8 @@ Elm.AddReminderDecorator.make = function (_elm) {
                                              ,SubmitReminder: SubmitReminder
                                              ,ItemListAction: ItemListAction
                                              ,SetItemList: SetItemList
+                                             ,ToggleReminderSectionVisibiliy: ToggleReminderSectionVisibiliy
+                                             ,UpdateCurrentDate: UpdateCurrentDate
                                              ,update: update
                                              ,submitReminder: submitReminder
                                              ,view: view
@@ -12911,6 +13218,10 @@ Elm.AddReminderDecorator.make = function (_elm) {
                                              ,toggleTruncation: toggleTruncation
                                              ,togglePinned: togglePinned
                                              ,toggleDone: toggleDone
+                                             ,toggleVisibilityDoneSection: toggleVisibilityDoneSection
+                                             ,checkDeadlinesOfItems: checkDeadlinesOfItems
+                                             ,checkSnoozeTimeOfItems: checkSnoozeTimeOfItems
+                                             ,toggleVisibilitySnoozedSection: toggleVisibilitySnoozedSection
                                              ,reminderSectionStyle: reminderSectionStyle
                                              ,main: main
                                              ,model: model
@@ -12930,7 +13241,8 @@ Elm.HotKeyDecorator.make = function (_elm) {
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
+   $Signal = Elm.Signal.make(_elm),
+   $Time = Elm.Time.make(_elm);
    var _op = {};
    var filterFalseValues = function (signal) {
       var filterCondition = function (value) {
@@ -13014,11 +13326,60 @@ Elm.HotKeyDecorator.make = function (_elm) {
            {addReminderDecorator: A2($AddReminderDecorator.update,
            $AddReminderDecorator.normalSorting(model.addReminderDecorator),
            model.addReminderDecorator)});
-         default: return _U.update(model,
+         case "AddReminderDecoratorAction": return _U.update(model,
            {addReminderDecorator: A2($AddReminderDecorator.update,
            _p2._0,
+           model.addReminderDecorator)});
+         case "ToggleVisibilityDoneSection": return _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.toggleVisibilityDoneSection,
+           model.addReminderDecorator)});
+         case "ToggleVisibilityReminderSection": return _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.ToggleReminderSectionVisibiliy,
+           model.addReminderDecorator)});
+         case "PropagateCurrentTime": var _p3 = _p2._0;
+           var deadlinesCheckedModel = _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.checkDeadlinesOfItems(_p3),
+           model.addReminderDecorator)});
+           var snoozeTimeCheckedModel = _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.checkSnoozeTimeOfItems(_p3),
+           deadlinesCheckedModel.addReminderDecorator)});
+           return _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.UpdateCurrentDate(_p3),
+           snoozeTimeCheckedModel.addReminderDecorator)});
+         default: return _U.update(model,
+           {addReminderDecorator: A2($AddReminderDecorator.update,
+           $AddReminderDecorator.toggleVisibilitySnoozedSection,
            model.addReminderDecorator)});}
    });
+   var ToggleVisibilitySnoozedSection = {ctor: "ToggleVisibilitySnoozedSection"};
+   var toggleVisibilitySnoozedSection = A2(signalActionOnKeyPress,
+   ToggleVisibilitySnoozedSection,
+   87);
+   var PropagateCurrentTime = function (a) {
+      return {ctor: "PropagateCurrentTime",_0: a};
+   };
+   var timedActionsSignal = function () {
+      var clockSignal = $Time.every($Time.second);
+      var timeAction = PropagateCurrentTime;
+      return A2($Signal.map,
+      function (currentTime) {
+         return PropagateCurrentTime(currentTime);
+      },
+      clockSignal);
+   }();
+   var ToggleVisibilityReminderSection = {ctor: "ToggleVisibilityReminderSection"};
+   var toggleVisibilityReminderSection = A2(signalActionOnKeyRelease,
+   ToggleVisibilityReminderSection,
+   82);
+   var ToggleVisibilityDoneSection = {ctor: "ToggleVisibilityDoneSection"};
+   var toggleVisibilityDoneSection = A2(signalActionOnKeyPress,
+   ToggleVisibilityDoneSection,
+   73);
    var AddReminderDecoratorAction = function (a) {
       return {ctor: "AddReminderDecoratorAction",_0: a};
    };
@@ -13060,14 +13421,17 @@ Elm.HotKeyDecorator.make = function (_elm) {
                                                             ,togglePinned
                                                             ,toggleDone
                                                             ,normalSorting
-                                                            ,reverseSorting]));
+                                                            ,reverseSorting
+                                                            ,toggleVisibilityDoneSection
+                                                            ,toggleVisibilityReminderSection
+                                                            ,toggleVisibilitySnoozedSection]));
    var NoOp = {ctor: "NoOp"};
    var actions = $Signal.mailbox(NoOp);
+   var totalActionSignal = $Signal.mergeMany(_U.list([mergedHotkeyActionSignal
+                                                     ,timedActionsSignal
+                                                     ,actions.signal]));
    var init = {addReminderDecorator: $AddReminderDecorator.init};
-   var model = A3($Signal.foldp,
-   update,
-   init,
-   A2($Signal.merge,mergedHotkeyActionSignal,actions.signal));
+   var model = A3($Signal.foldp,update,init,totalActionSignal);
    var main = A2($Signal.map,view(actions.address),model);
    var Model = function (a) {
       return {addReminderDecorator: a};
@@ -13084,6 +13448,10 @@ Elm.HotKeyDecorator.make = function (_elm) {
                                         ,ReverseSortHK: ReverseSortHK
                                         ,NormalSortHK: NormalSortHK
                                         ,AddReminderDecoratorAction: AddReminderDecoratorAction
+                                        ,ToggleVisibilityDoneSection: ToggleVisibilityDoneSection
+                                        ,ToggleVisibilityReminderSection: ToggleVisibilityReminderSection
+                                        ,PropagateCurrentTime: PropagateCurrentTime
+                                        ,ToggleVisibilitySnoozedSection: ToggleVisibilitySnoozedSection
                                         ,update: update
                                         ,signalActionOnKeyPress: signalActionOnKeyPress
                                         ,signalActionOnKeyRelease: signalActionOnKeyRelease
@@ -13100,9 +13468,14 @@ Elm.HotKeyDecorator.make = function (_elm) {
                                         ,toggleDone: toggleDone
                                         ,normalSorting: normalSorting
                                         ,reverseSorting: reverseSorting
+                                        ,toggleVisibilityDoneSection: toggleVisibilityDoneSection
+                                        ,toggleVisibilityReminderSection: toggleVisibilityReminderSection
+                                        ,toggleVisibilitySnoozedSection: toggleVisibilitySnoozedSection
                                         ,mergedHotkeyActionSignal: mergedHotkeyActionSignal
+                                        ,timedActionsSignal: timedActionsSignal
                                         ,view: view
                                         ,viewAddReminderDecorator: viewAddReminderDecorator
+                                        ,totalActionSignal: totalActionSignal
                                         ,main: main
                                         ,model: model
                                         ,actions: actions};
@@ -13125,9 +13498,7 @@ Elm.Main.make = function (_elm) {
    var model = A3($Signal.foldp,
    $HotKeyDecorator.update,
    $HotKeyDecorator.init,
-   A2($Signal.merge,
-   $HotKeyDecorator.mergedHotkeyActionSignal,
-   actions.signal));
+   $HotKeyDecorator.totalActionSignal);
    var main = A2($Signal.map,
    $HotKeyDecorator.view(actions.address),
    model);
