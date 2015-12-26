@@ -21,6 +21,10 @@ type alias Model =
   , pinned : Bool
   , markedAsDone : Bool
   , isFocused : Bool
+  -- EXTENSIONS
+  , isPastDeadline : Bool
+--  , isSnoozed : Bool
+  --, snoozedUntilDate : Date
   }
 
 -- UPDATE ----------------------------------------------------------------------
@@ -31,6 +35,8 @@ type Action
   | EmailAction Email.Action
   | ReminderAction Reminder.Action
   | Focus Bool
+  -- EXTENSIONS
+  | CheckDeadline Time
 
 update : Action -> Model -> Model
 update action model =
@@ -47,6 +53,8 @@ update action model =
       updateReminderAction reminderAction model
     Focus focusBool ->
       { model | isFocused = focusBool }
+    CheckDeadline currentTime ->
+      checkIfPastDeadline currentTime model
 
 updateEmailAction : Email.Action -> Model -> Model
 updateEmailAction emailAction model =
@@ -67,11 +75,17 @@ updateReminderAction reminderAction model =
           =  Reminder.update reminderAction reminderModel
           |> ReminderModel }
 
+checkIfPastDeadline : Time -> Model -> Model
+checkIfPastDeadline currentTime model =
+  let deadline = model.date
+  in { model | isPastDeadline = (deadline < currentTime) }
+
+
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
 view address model =
   div [selectedItemStyle model.isFocused]
-    [ div [ itemStyle ]
+    [ div [ itemStyle model ]
       [ viewItem address model.itemModel
       , viewMarkAsDoneButton address model
       , viewPinButton address model
@@ -145,6 +159,7 @@ initModel =
   , pinned = False
   , markedAsDone = False
   , isFocused = False
+  , isPastDeadline = False
   }
 -- UTILS -----------------------------------------------------------------------
 
@@ -160,7 +175,10 @@ newReminderItem body' date' pinned' markedAsDone' =
   , pinned = pinned'
   , markedAsDone = markedAsDone'
   , isFocused = False
+  , isPastDeadline = False
   }
+
+
 -- STYLE -----------------------------------------------------------------------
 selectedItemStyle : Bool -> Attribute
 selectedItemStyle isFocused =
@@ -173,13 +191,19 @@ selectedItemStyle isFocused =
         ]
     False -> style []
 
-itemStyle : Attribute
-itemStyle =
-  style
-    [ ("opacity", "1")
-    , ("padding", "10px 10px 20px")
-    , ("border-bottom-width", "thick")
-    , ("border-bottom-style", "solid")
-    , ("border-bottom-color", "rgb(250, 250, 250)")
-    , ("background-color", "rgb(255, 255, 255)")
-    ]
+itemStyle : Model -> Attribute
+itemStyle model =
+  let backGroundColor
+        = case model.isPastDeadline of
+            True ->
+                ("background-color", "rgb(227, 166, 170)")
+            False ->
+                ("border-bottom-color", "rgb(250, 250, 250)")
+  in style
+        [ ("opacity", "1")
+        , ("padding", "10px 10px 20px")
+        , ("border-bottom-width", "thick")
+        , ("border-bottom-style", "solid")
+        , ("border-bottom-color", "rgb(250, 250, 250)")
+        , backGroundColor
+        ]

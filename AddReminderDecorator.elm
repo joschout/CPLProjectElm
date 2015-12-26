@@ -5,14 +5,15 @@ http://engineering.truqu.com/2015/09/25/real-world-elm-part-2.html
 --}
 
 import Html exposing (..)
-import Html.Attributes exposing (action, attribute, class, for, id, type', style)
+import Html.Attributes exposing (action, attribute, class, for, id, type', value, style)
 import Html.Events exposing (on, onClick, targetValue)
 import Dict exposing (Dict)
 import String
 import ItemList
 import Initial exposing (initialItemList)
-import TimeUtil exposing (timeToDateString, DateFormat)
-import Time exposing (every, second)
+import Time exposing (Time)
+import TimeUtil exposing (DateFormat, timeToDateString)
+
 -- MODEL -----------------------------------------------------------------------
 -- type to represent the state of the input elements of the reminder
 type InputState
@@ -32,6 +33,7 @@ type alias Model =
     -- String is the Key which maps to a value of InputState
     --EXTENSIONS:
   , reminderSectionVisible : Bool
+  , currentDate : Time
   }
 
 init : Model
@@ -41,6 +43,7 @@ init =
   , date = ""
   , inputState = Dict.empty
   , reminderSectionVisible = True
+  , currentDate = 0
   }
 
 -- UPDATE ----------------------------------------------------------------------
@@ -55,6 +58,7 @@ type Action
   | SetItemList ItemList.Model
   -- EXTENSIONS
   | ToggleReminderSectionVisibiliy
+  | UpdateCurrentDate Time
 
 update : Action -> Model -> Model
 update action model =
@@ -91,6 +95,11 @@ update action model =
     ToggleReminderSectionVisibiliy ->
       { model | reminderSectionVisible = (not model.reminderSectionVisible) }
 
+    UpdateCurrentDate currentTime ->
+      { model | currentDate = currentTime
+              , date = TimeUtil.timeToDateString TimeUtil.Dash_DMY currentTime }
+
+
 
 submitReminder : Model -> Model
 submitReminder model =
@@ -126,7 +135,7 @@ viewReminder address model =
           [ text "Add" ]
         ]
       ]
-      
+
     False ->
       div [] []
 
@@ -139,7 +148,7 @@ type alias InputFuncParams =
   , label: String -- the text of the label
   , type': String -- the type of input (text, email, etc.) Note that 'type' is a keyword
   , action: String -> Action -- a function that takes the value of the input and turns it into an action
-  --, value: String -- the value that must be shown in the input field
+  , value: String -- the value that must be shown in the input field
   }
 
 inputFunc : InputFuncParams -> Signal.Address Action -> Model -> Html
@@ -147,7 +156,7 @@ inputFunc params address model =
   div [ class "form-group" ]
       [ label [ for params.id ]
               [ text params.label ]
-      , input [ id params.id, type' params.type' --, value params.value
+      , input [ id params.id, type' params.type' , value params.value
               , class "form-control"
               , on "input" targetValue
                   (Signal.message address << params.action)
@@ -155,24 +164,23 @@ inputFunc params address model =
               []
       ]
 reminderBodyInput : Signal.Address Action -> Model -> Html
-reminderBodyInput =
+reminderBodyInput address model =
   inputFunc { id = "reminderBody"
             , label = "Reminder message"
             , type' = "text"
             , action = SetReminderBody
-            --, value = model.reminderBody
-            }
+            , value = model.reminderBody
+            } address model
 dateInput : Signal.Address Action -> Model -> Html
-dateInput =
+dateInput address model =
   inputFunc { id = "date"
             , label = "date"
-            , type' = "date"
+            , type' = "text"
             , action = SetReminderDate
-            --, value = if isValidDate model.date then model.date else timeSignal
-            }
-
---timeSignal : Signal String
---timeSignal = Signal.map (TimeUtil.timeToDateString TimeUtil.Slash_YMD) (Time.every Time.second)
+            , value = if String.isEmpty model.date
+                      then TimeUtil.timeToDateString TimeUtil.Slash_YMD model.currentDate
+                      else model.date
+            } address model
 
 -- VALIDATION OF INPUT STRINGS ------------------------------------------------
 
@@ -227,6 +235,10 @@ toggleDone model =
 toggleVisibilityDoneSection : Action
 toggleVisibilityDoneSection  =
   ItemListAction (ItemList.ToggleVisiblityDoneItems)
+
+checkDeadlinesOfItems : Time.Time -> Action
+checkDeadlinesOfItems currentTime =
+  ItemListAction (ItemList.CheckDeadlines currentTime)
 
 -- STYLE -----------------------------------------------------------------------
 

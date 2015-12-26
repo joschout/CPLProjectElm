@@ -68,3 +68,6 @@ stringToTime dateStr =
       Date.toTime dateValue
     Err errorString ->
       0
+
+--clockSignal : Signal Time
+--clockSignal = Time.every Time.second

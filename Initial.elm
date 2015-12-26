@@ -15,6 +15,7 @@ itemEx1=
   , pinned = False
   , markedAsDone = False
   , isFocused = False
+  , isPastDeadline = False
   }
 
 emailEx1 : Email.Model
@@ -48,6 +49,7 @@ itemEx2 =
   , pinned = False
   , markedAsDone = False
   , isFocused = False
+  , isPastDeadline = False
   }
 
 emailEx2 : Email.Model
@@ -67,6 +69,7 @@ itemEx3 =
     , pinned = False
     , markedAsDone = False
     , isFocused = False
+    , isPastDeadline = False
     }
 reminderEx1 : Reminder.Model
 reminderEx1 =
@@ -81,6 +84,7 @@ itemEx4 =
   , pinned = False
   , markedAsDone = False
   , isFocused = False
+  , isPastDeadline = False
   }
 reminderEx2 : Reminder.Model
 reminderEx2 =

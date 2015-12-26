@@ -3,7 +3,7 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
-import HotKeyDecorator exposing (Model, actions, view, update, init, mergedHotkeyActionSignal, Action)
+import HotKeyDecorator exposing (Model, totalActionSignal, view, update, init, Action)
 import Initial exposing (initialItemList)
 
 
@@ -23,7 +23,9 @@ import Initial exposing (initialItemList)
 -- * Hide the 'add reminder' functionality and add a hotkey to toggle its
 -- * visibility.
 -- Status: Completed / Attempted / Unattempted
--- Summary:
+-- Summary: Completed
+-- The visibility of the reminder section can be toggled
+-- using the hotkey ALT + R
 
 
 -- * Put the current date as the default in the date picker when adding
@@ -84,7 +86,7 @@ main =
 
 
 model : Signal Model
-model = Signal.foldp update init (Signal.merge  mergedHotkeyActionSignal actions.signal)
+model = Signal.foldp update init totalActionSignal
 
 
 actions : Signal.Mailbox Action

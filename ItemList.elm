@@ -3,6 +3,7 @@ module ItemList where
 import Item exposing (Model, view, newReminderItem, toggleTruncation, Action)
 import Html exposing (..)
 import Html.Attributes exposing (style)
+import Time exposing (Time)
 
 -- MODEL -----------------------------------------------------------------------
 type alias Model =
@@ -23,7 +24,9 @@ type Action
   | AddReminder String String Bool Bool -- body' date' pinned' markedAsDone
   | ChangeFocus Int
   | ReverseSortingOrder Bool
+  -- EXTENSIONS
   | ToggleVisiblityDoneItems
+  | CheckDeadlines Time
 
 update : Action -> Model -> Model
 update action model =
@@ -56,6 +59,15 @@ update action model =
 
     ToggleVisiblityDoneItems ->
       { model | doneItemsVisible = (not model.doneItemsVisible) }
+
+    CheckDeadlines currentTime ->
+      let updatedItemList
+            = List.map (checkAndUpdateDeadline currentTime) model.itemList
+      in { model | itemList = updatedItemList }
+
+checkAndUpdateDeadline : Time -> (ID, Item.Model) -> (ID, Item.Model)
+checkAndUpdateDeadline currentTime (id, itemModel) =
+  (id, (Item.update (Item.CheckDeadline currentTime) itemModel))
 
 
 -- CHANGING FOCUS --------------------------------------------------------------

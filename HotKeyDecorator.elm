@@ -2,10 +2,12 @@ module HotKeyDecorator where
 
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
-    toggleDone, toggleVisibilityDoneSection, Action)
+    toggleDone, toggleVisibilityDoneSection, Action, checkDeadlinesOfItems)
 import Keyboard exposing (isDown, alt)
 import Html exposing (..)
+import Time exposing (Time)
 import Debug
+
 -- MODEL -----------------------------------------------------------------------
 type alias Model = {
   addReminderDecorator : AddReminderDecorator.Model
@@ -28,6 +30,7 @@ type Action
   -- EXTENSIONS
   | ToggleVisibilityDoneSection
   | ToggleVisibilityReminderSection
+  | PropagateCurrentTime Time
 
 update : Action -> Model -> Model
 update action model =
@@ -56,9 +59,10 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleVisibilityDoneSection) model.addReminderDecorator }
     ToggleVisibilityReminderSection ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.ToggleReminderSectionVisibiliy) model.addReminderDecorator }
-
--- VIEW ------------------------------------------------------------------------
-
+    PropagateCurrentTime currentTime ->
+      let deadlinesCheckedModel =
+         { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.checkDeadlinesOfItems currentTime) model.addReminderDecorator }
+      in { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.UpdateCurrentDate currentTime) deadlinesCheckedModel.addReminderDecorator }
 -- ACTION HOTKEY SIGNALS -------------------------------------------------------
 {--
 How are hot keys implemented?
@@ -195,6 +199,12 @@ mergedHotkeyActionSignal =
                     , toggleVisibilityDoneSection
                     , toggleVisibilityReminderSection
                     ])
+-- TIME ------------------------------------------------------------------------
+timedActionsSignal : Signal Action
+timedActionsSignal =
+  let timeAction = PropagateCurrentTime
+      clockSignal = Time.every Time.second
+  in Signal.map (\currentTime -> PropagateCurrentTime currentTime) clockSignal
 
 -- VIEW ------------------------------------------------------------------------
 view :  Signal.Address Action -> Model -> Html
@@ -207,13 +217,21 @@ viewAddReminderDecorator address model =
   AddReminderDecorator.view (Signal.forwardTo address AddReminderDecoratorAction) model.addReminderDecorator
 
 -- MAIN ------------------------------------------------------------------------
+totalActionSignal : Signal Action
+totalActionSignal =
+  Signal.mergeMany [ mergedHotkeyActionSignal
+                   , timedActionsSignal
+                   ,actions.signal
+                   ]
+
+
 main : Signal Html
 main =
   Signal.map (view actions.address) model
 
 
 model : Signal Model
-model = Signal.foldp update init (Signal.merge  mergedHotkeyActionSignal actions.signal)
+model = Signal.foldp update init totalActionSignal
 
 
 actions : Signal.Mailbox Action
