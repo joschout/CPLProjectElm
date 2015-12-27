@@ -170,7 +170,8 @@ viewDate model =
 viewSnoozeSection : Signal.Address Action -> Model -> Html
 viewSnoozeSection address model =
   div [ class "container" ]
-  [  div [ attribute "role" "form" ]
+  [ showSnoozeDate model
+  , div [ attribute "role" "form" ]
     [ dateInput address model
     , button [ class "btn btn-default"
               , onClick address
@@ -180,6 +181,18 @@ viewSnoozeSection address model =
       [ text "Snooze" ]
     ]
   ]
+
+showSnoozeDate : Model -> Html
+showSnoozeDate model =
+  case model.isSnoozed of
+    True ->
+      div
+        [style [("padding", "5px 0px 5px")] ]
+        [ text
+                <| "This item is snoozed until: "
+                  ++ (TimeUtil.timeToDateString TimeUtil.Dash_DMY model.snoozedUntilDate)
+        ]
+    False -> text ""
 
 inputFunc : InputFuncParams -> Signal.Address Action -> Model -> Html
 inputFunc params address model =
