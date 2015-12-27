@@ -4,7 +4,7 @@ import Item exposing (Model, initModel)
 import TimeUtil exposing (stringToTime)
 import Email
 import Reminder
-import ItemList exposing (actionMailbox)
+import ItemList 
 import Html exposing (..)
 import Dict
 

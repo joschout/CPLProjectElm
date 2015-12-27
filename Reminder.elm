@@ -1,4 +1,10 @@
-module Reminder where
+module Reminder
+      ( Model
+      , init
+      , Action
+      , update
+      , view
+      ) where
 
 import Html exposing (..)
 import Html.Events exposing (onClick)

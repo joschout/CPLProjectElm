@@ -1,4 +1,9 @@
-module ItemList where
+module ItemList
+  ( Model, view, update, Action(..)
+  , focusOnPreviousItemAction, focusOnNextItemAction
+  , normalSortingAction, reverseSortingAction
+  , toggleTruncationAction, togglePinnedAction, toggleDoneAction
+  ) where
 
 import Item exposing (Model, view, newReminderItem, toggleTruncation, Action)
 import Html exposing (..)

@@ -1,4 +1,5 @@
-module Email where
+module Email
+  ( Model, Action (..) , update, view, initModel) where
 
 import Html exposing (..)
 import Html.Events exposing (onClick)

@@ -1,4 +1,12 @@
-module AddReminderDecorator where
+module AddReminderDecorator
+  ( Model, view, update, Action(..)
+  , focusOnPrevious, focusOnNext
+  , normalSorting, reverseSorting
+  , togglePinned, toggleDone, toggleTruncation
+  , checkDeadlinesOfItems, checkSnoozeTimeOfItems
+  , toggleVisibilityDoneSection, toggleVisibilitySnoozedSection
+  , init
+  ) where
 {-- This module is based on
 "Real World Elm - Part 2 - Form Validation"
 http://engineering.truqu.com/2015/09/25/real-world-elm-part-2.html
@@ -179,7 +187,7 @@ dateInput address model =
             , label = "date"
             , type' = "date"
             , action = SetReminderDate
-            , value = 
+            , value =
                if String.isEmpty model.dateInputValue
                 then TimeUtil.timeToDateString TimeUtil.Dash_YMD model.currentDate
                 else model.dateInputValue

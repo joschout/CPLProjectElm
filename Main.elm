@@ -3,7 +3,7 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
-import HotKeyDecorator exposing (Model, totalActionSignal, view, update, init, Action, actions)
+import HotKeyDecorator exposing (model, view, update, actions)
 import Initial exposing (initialItemList)
 
 

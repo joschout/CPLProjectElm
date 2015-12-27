@@ -1,4 +1,9 @@
-module Item where
+module Item
+  ( Model, view , update
+  , ItemModel (..)
+  , Action (..)
+  , newReminderItem, toggleTruncation, initModel
+  ) where
 
 import Signal
 import Html exposing (..)
@@ -297,11 +302,17 @@ itemStyle model =
   let backGroundColor
         = case shouldBeMarkedAsPastDeadline model of
             True ->
-                ("background-color", "rgb(227, 166, 170)")
+              ("background-color", "rgb(227, 166, 170)")
             False ->
-                ("background-color", "rgb(255, 255, 255)")
+              ("background-color", "rgb(255, 255, 255)")
+      opacityOfItem
+        = case model.markedAsDone of
+            True ->
+              ("opacity", "0.5")
+            False ->
+              ("opacity", "1")
   in style
-        [ ("opacity", "1")
+        [ opacityOfItem
         , ("padding", "10px 10px 20px")
         , ("border-bottom-width", "thick")
         , ("border-bottom-style", "solid")

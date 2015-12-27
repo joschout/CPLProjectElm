@@ -1,10 +1,16 @@
-module TimeUtil where
-
+module TimeUtil
+      ( DateFormat(Dash_DMY, Slash_YMD, Dash_YMD)
+      , timeToDateString
+      , stringToTime
+      ) where
+{--
+This module contains helper functions to convert between Time and String
+and vice versa.
+--}
 
 import Time exposing (Time)
 import Date exposing (Date)
 import String exposing (padLeft)
-
 
 type DateFormat
   = Dash_DMY
@@ -81,6 +87,3 @@ stringToTime dateStr =
       Date.toTime dateValue
     Err errorString ->
       0
-
---clockSignal : Signal Time
---clockSignal = Time.every Time.second

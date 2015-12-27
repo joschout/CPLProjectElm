@@ -1,4 +1,5 @@
-module HotKeyDecorator where
+module HotKeyDecorator
+  (model, view, update, actions)where
 
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
