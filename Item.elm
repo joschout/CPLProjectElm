@@ -124,7 +124,6 @@ view address model =
       ]
     ]
 
-
 -- viewItem
 viewItem : Signal.Address Action -> ItemModel -> Html
 viewItem address itemModel =
@@ -204,7 +203,7 @@ inputFunc params address model =
   div [ class "form-group" ]
       [ label [ for params.id ]
               [ text params.label ]
-      , input [ id params.id, type' params.type' --, value params.value
+      , input [ id params.id, type' params.type'
               , class "form-control"
               , on "input" targetValue
                   (Signal.message address << params.action)
@@ -218,11 +217,7 @@ dateInput address model =
             , label = "Snooze until: "
             , type' = "date"
             , action = SetSnoozeDate
---            , value = if String.isEmpty model.snoozeDateInputValue
---                      then TimeUtil.timeToDateString TimeUtil.Slash_YMD model.currentDate
---                      else model.snoozeDateInputValue
             } address model
-
 
 -- MAIN, STATE & SIGNALS -------------------------------------------------------
 actionMailbox : Signal.Mailbox Action
@@ -251,11 +246,10 @@ initModel =
   , snoozedUntilDate = 0
   , snoozeInputState = Dict.empty
   }
--- UTILS -----------------------------------------------------------------------
 
+-- UTILS -----------------------------------------------------------------------
 toggleTruncation : Action
 toggleTruncation = EmailAction (Email.ToggleTruncation)
-
 
 newReminderItem : String ->  String -> Bool -> Bool -> Model
 newReminderItem body' date' pinned' markedAsDone' =
@@ -272,7 +266,6 @@ newReminderItem body' date' pinned' markedAsDone' =
   , snoozeInputState = Dict.empty
   }
 
-
 isValidDate : String -> Bool
 isValidDate value =
   not (String.isEmpty value)
@@ -282,7 +275,6 @@ type alias InputFuncParams =
   , label: String -- the text of the label
   , type': String -- the type of input (text, email, etc.) Note that 'type' is a keyword
   , action: String -> Action -- a function that takes the value of the input and turns it into an action
---  , value: String -- the value that must be shown in the input field
   }
 
 -- STYLE -----------------------------------------------------------------------

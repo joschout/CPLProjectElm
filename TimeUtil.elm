@@ -49,7 +49,6 @@ combineWithDashYMD day month year =
       yearString = toString year
   in yearString ++ "-" ++ monthString ++ "-" ++ dayString
 
-
 combineWithSlash : Int -> Int -> Int -> String
 combineWithSlash day month year =
   let dayString = toString day

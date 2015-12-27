@@ -1,13 +1,7 @@
 module Reminder
-      ( Model
-      , init
-      , Action
-      , update
-      , view
-      ) where
+  ( Model, init, Action, update, view) where
 
 import Html exposing (..)
-import Html.Events exposing (onClick)
 
 -- MODEL -----------------------------------------------------------------------
 type alias Model =
@@ -34,8 +28,8 @@ view : Signal.Address Action -> Model -> Html
 view address model =
    p [] [ text model.body]
 
--- MAIN ------------------------------------------------------------------------
-state : Signal Model
+-- MAIN (for testing purposes) -------------------------------------------------
+{-- state : Signal Model
 state = Signal.foldp update (init "Dit is een testbody.") actionSignal
 
 actionMailbox : Signal.Mailbox Action
@@ -46,4 +40,4 @@ actionSignal = actionMailbox.signal
 
 main : Signal Html
 main =
-   Signal.map (view actionMailbox.address) state
+   Signal.map (view actionMailbox.address) state --}

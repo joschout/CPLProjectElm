@@ -12,7 +12,7 @@ import Time exposing (Time)
 
 -- MODEL -----------------------------------------------------------------------
 type alias Model =
-   { itemList : List (ID, Item.Model )
+   { itemList : List (ID, Item.Model)
    , nextID : ID
    , indexSelectedItem : Int
     -- index of the selected item in the ordered list
@@ -247,13 +247,6 @@ viewSnoozeSection address model =
 snoozedHeader : Html
 snoozedHeader =
   h1 [] [text "Snoozed"]
--- SIGNALS --------------------------------------------------------------------
-
-actionMailbox : Signal.Mailbox Action
-actionMailbox = Signal.mailbox NoOp
-
-actionSignal : Signal Action
-actionSignal = actionMailbox.signal
 
 -- FILTERING & SORTING ---------------------------------------------------------
 

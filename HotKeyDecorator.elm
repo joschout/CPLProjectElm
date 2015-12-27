@@ -103,9 +103,6 @@ signalActionOnKeyPress action keyCode =
 
 signalActionOnKeyRelease : Action -> Int -> Signal Action
 signalActionOnKeyRelease action keyCode=
---  let eventSignal = filterFalseValues
---          <| signalBothKeysPressed alt_KeyPressed
---          <| isKeyPressed keyCode
   let eventSignal = filterTrueValues
           <| signalOneKeyNotPressed alt_KeyPressed (isKeyPressed keyCode)
   in Signal.map (\_-> action) eventSignal

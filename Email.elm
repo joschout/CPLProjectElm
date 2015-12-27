@@ -71,16 +71,10 @@ viewMoreButton address model =
   in case canBeTruncated of
     True ->
       button
-        [ onClick address ToggleTruncation ]  --onClick address (MarkAsDone (not model.MarkAsDone)) ]
+        [ onClick address ToggleTruncation ]
         [ text <| moreButtonText model ]
     False ->
       div [] []
-
-allowedToBeTruncated : String -> Bool
-allowedToBeTruncated string =
-  let stringLength = String.length string
-  in if stringLength > 200  then True
-    else False
 
 moreButtonText : Model -> String
 moreButtonText model =
@@ -90,8 +84,11 @@ moreButtonText model =
     False
       -> "Less"
 -- UTILS -----------------------------------------------------------------------
-
-
+allowedToBeTruncated : String -> Bool
+allowedToBeTruncated string =
+  let stringLength = String.length string
+  in if stringLength > 200  then True
+    else False
 
 initModel : Model
 initModel  =
