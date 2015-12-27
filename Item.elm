@@ -177,7 +177,7 @@ viewSnoozeSection address model =
                   <| if isValidDate model.snoozeDateInputValue then Snooze
                      else SetSnoozeInputState
               ]
-      [ text "Add" ]
+      [ text "Snooze" ]
     ]
   ]
 
@@ -286,13 +286,13 @@ itemStyle model =
             True ->
                 ("background-color", "rgb(227, 166, 170)")
             False ->
-                ("border-bottom-color", "rgb(250, 250, 250)")
+                ("background-color", "rgb(255, 255, 255)")
   in style
         [ ("opacity", "1")
         , ("padding", "10px 10px 20px")
         , ("border-bottom-width", "thick")
         , ("border-bottom-style", "solid")
-        , ("border-bottom-color", "rgb(250, 250, 250)")
+        , ("border-bottom-color", "rgb(150, 150, 150)")
         , backGroundColor
         ]
 shouldBeMarkedAsPastDeadline : Model -> Bool
