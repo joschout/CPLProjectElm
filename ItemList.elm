@@ -68,7 +68,12 @@ update action model =
       in changeFocusOfModel model.indexSelectedItem reversedModel
 
     ToggleVisiblityDoneItems ->
-      { model | doneItemsVisible = (not model.doneItemsVisible) }
+      let modelToggledVisibility = { model | doneItemsVisible = (not model.doneItemsVisible) }
+          currentIndex = model.indexSelectedItem
+          totalListLength = totalListLengthOfVisibleSections modelToggledVisibility
+          currentIndexMod = currentIndex % totalListLength
+      in { modelToggledVisibility | indexSelectedItem = currentIndexMod}
+                                  --, itemList = List.map (changeFocusOfItem currentIndexMod) model.itemList}
 
     CheckDeadlines currentTime ->
       let updatedItemList
@@ -81,7 +86,12 @@ update action model =
       in { model | itemList = updatedItemList }
 
     ToggleVisibilitySnoozedSection ->
-      { model | snoozedSectionVisible = (not model.snoozedSectionVisible) }
+      let modelToggledVisibility = { model | snoozedSectionVisible = (not model.snoozedSectionVisible) }
+          currentIndex = model.indexSelectedItem
+          totalListLength = totalListLengthOfVisibleSections modelToggledVisibility
+          currentIndexMod = currentIndex % totalListLength
+      in { modelToggledVisibility | indexSelectedItem = currentIndexMod }
+                                  --  , itemList = List.map (changeFocusOfItem currentIndexMod) model.itemList }
 
 checkAndUpdateDeadline : Time -> (ID, Item.Model) -> (ID, Item.Model)
 checkAndUpdateDeadline currentTime (id, itemModel) =
@@ -110,10 +120,23 @@ changeFocusOfItem correctID (itemID, itemModel) =
 getIdFromIndexInUnsortedModelList : Int -> Model -> ID
 getIdFromIndexInUnsortedModelList index model =
   let sortedToDoModel = sortModel
-                      <| filterOnDone model False
-      sortedDoneModel = sortModel
-                      <| filterOnDone model True
-      totalSortedList = sortedToDoModel.itemList ++ sortedDoneModel.itemList
+                      <| getToDoModelNotSnoozed model
+      sortedDoneItemsList =
+        case model.doneItemsVisible of
+          True ->
+            let sortedDoneModel = sortModel
+                      <| getDoneModelNotSnoozed model
+            in sortedDoneModel.itemList
+          False ->
+            []
+      snoozedItemsList =
+        case model.snoozedSectionVisible of
+          True ->
+            let snoozedModel = filterOnSnoozed model True
+            in snoozedModel.itemList
+          False ->
+            []
+      totalSortedList = sortedToDoModel.itemList ++ sortedDoneItemsList ++ snoozedItemsList
   in getIdFromIndexInSortedList index totalSortedList
 
 
@@ -128,22 +151,56 @@ getIdFromIndexInSortedList index list =
     Nothing ->
       -1
 
------- EXTRA INTERFACE TO EXTERN -----------------------------------------------
+--------------------------------------------------------------------------------s
 getNextIndex : Model -> Int
 getNextIndex model =
   let currentIndex = model.indexSelectedItem
-      listLength = List.length model.itemList
+      totalListLength = totalListLengthOfVisibleSections model
       nextIndex = currentIndex + 1
-  in if nextIndex > (listLength - 1) then 0
-      else nextIndex
+  in nextIndex % totalListLength
+
 getPreviousIndex : Model -> Int
 getPreviousIndex model =
   let currentIndex = model.indexSelectedItem
-      listLength = List.length model.itemList
+      totalListLength = totalListLengthOfVisibleSections model
       previousIndex = currentIndex - 1
-  in if previousIndex < 0 then listLength - 1
-      else previousIndex
+  in  previousIndex % totalListLength
 
+totalListLengthOfVisibleSections : Model -> Int
+totalListLengthOfVisibleSections model =
+  let numberOfToDoItems = numberOfItems <| getToDoModelNotSnoozed model
+      numberOfDoneItems =
+        case model.doneItemsVisible of
+          True ->
+            numberOfItems <| getDoneModelNotSnoozed model
+          False ->
+            0
+      numberOfSnoozedItems =
+        case model.snoozedSectionVisible of
+          True ->
+            numberOfItems <| filterOnSnoozed model True
+          False ->
+            0
+  in numberOfToDoItems + numberOfDoneItems + numberOfSnoozedItems
+
+numberOfItems : Model -> Int
+numberOfItems model =
+  let listOfItems = model.itemList
+  in List.length listOfItems
+
+getDoneModelNotSnoozed : Model -> Model
+getDoneModelNotSnoozed model =
+  let notSnoozedModel = filterOnSnoozed model False
+  in  filterOnDone notSnoozedModel True
+
+getToDoModelNotSnoozed : Model -> Model
+getToDoModelNotSnoozed model =
+  let notSnoozedModel = filterOnSnoozed model False
+  in  filterOnDone notSnoozedModel False
+
+
+
+-- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
 focusOnNextItemAction : Model -> Action
 focusOnNextItemAction model =
   ChangeFocus (getNextIndex model)
@@ -192,8 +249,7 @@ view address model =
 -- VIEW TO DO SECTION
 viewToDoDiv : Signal.Address Action -> Model -> Html
 viewToDoDiv address model =
-  let notSnoozedModel = filterOnSnoozed model False
-      toDoModel = filterOnDone notSnoozedModel False
+  let toDoModel = getToDoModelNotSnoozed model
   in case List.isEmpty toDoModel.itemList of
     True ->
       div [] []
@@ -213,8 +269,7 @@ toDoHeader =
 -- VIEW DONE SECTION
 viewDoneDiv : Signal.Address Action -> Model -> Html
 viewDoneDiv address model =
-  let notSnoozedModel = filterOnSnoozed model False
-      doneModel = filterOnDone notSnoozedModel True
+  let doneModel = getDoneModelNotSnoozed model
   in case shouldDoneItemsBeShown doneModel of
     False ->
       div [] []

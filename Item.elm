@@ -311,6 +311,7 @@ itemStyle model =
         , ("border-bottom-color", "rgb(150, 150, 150)")
         , backGroundColor
         ]
+        
 shouldBeMarkedAsPastDeadline : Model -> Bool
 shouldBeMarkedAsPastDeadline model
  = case model.itemModel of
