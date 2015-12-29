@@ -95,8 +95,11 @@ import Http
 -- get the email info *and then* send the result to our mailbox
 
 
-port fetchJSON : Task Http.Error ()
-port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTask
+--port fetchJSON : Task Http.Error ()
+--port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTask
+port fetchJSON : Signal (Task Http.Error ())
+port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTaskSignal
+
 
 -- MODEL -----------------------------------------------------------------------
 type alias Model = {

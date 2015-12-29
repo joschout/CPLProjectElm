@@ -1,12 +1,15 @@
 module JSONUtil
-  (jsonMailbox, getJSONAndSendItToMailboxTask, EmailKVString)
+  (jsonMailbox, getJSONAndSendItToMailboxTask,
+  getJSONAndSendItToMailboxTaskSignal,  EmailKVString)
   where
 
-import Graphics.Element exposing (show)
 import Http
-import Html exposing (Html)
 import Task exposing (Task, andThen)
 import Json.Decode exposing ((:=))
+import Time
+
+-- type alias to make my life easier
+type alias EmailKVString = List (String, String)
 
 -- set up mailbox
 --   the signal is piped directly to main
@@ -19,21 +22,30 @@ jsonMailbox =
 urlOfJSON : String
 urlOfJSON = "https://api.myjson.com/bins/19lg3"
 
--- type alias to make my life easier
-type alias EmailKVString = List (String, String)
+-- SIGNALS ---------------------------------------------------------------------
 
+-- A signal that updates to the current time every second
+clock : Signal Time.Time
+clock =
+  Time.every Time.minute
+
+getJSONAndSendItToMailboxTaskSignal : Signal (Task Http.Error ())
+getJSONAndSendItToMailboxTaskSignal =
+  Signal.map (\_ -> getJSONAndSendItToMailboxTask) clock
+
+-- TASKS -----------------------------------------------------------------------
 
 getJSONAndSendItToMailboxTask : Task Http.Error ()
 getJSONAndSendItToMailboxTask =
   safeGetJSON `andThen` sendJSON
 
--- TASK FOR SENDING THE EMAIL INFO TO THE MAILBOX ------------------------------
+-- TASK FOR SENDING THE EMAIL INFO TO THE MAILBOX
 -- send the list of email info to our jsonMailbox
 sendJSON : List (EmailKVString) -> Task x ()
 sendJSON emailKVList =
   Signal.send jsonMailbox.address emailKVList
 
--- TASKS FOR GETTING THE EMAIL INFORMATION -------------------------------------
+-- TASKS FOR GETTING THE EMAIL INFORMATION
 -- get the list of EmailKVString values at the url
 -- Note: this function may fail
 getJSON : Task Http.Error (List EmailKVString)
