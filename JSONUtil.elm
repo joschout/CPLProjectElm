@@ -1,6 +1,5 @@
 module JSONUtil
-  (jsonMailbox, getJSONAndSendItToMailboxTask,
-  getJSONAndSendItToMailboxTaskSignal,  EmailKVString)
+  (jsonMailbox, getJSONAndSendItToMailboxTaskSignal,  EmailKVString)
   where
 
 import Http

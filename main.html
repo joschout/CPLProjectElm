@@ -11850,6 +11850,374 @@ Elm.Html.Events.make = function (_elm) {
                                     ,targetChecked: targetChecked
                                     ,keyCode: keyCode
                                     ,Options: Options};
+};Elm.Native.Http = {};
+Elm.Native.Http.make = function(localRuntime) {
+
+	localRuntime.Native = localRuntime.Native || {};
+	localRuntime.Native.Http = localRuntime.Native.Http || {};
+	if (localRuntime.Native.Http.values)
+	{
+		return localRuntime.Native.Http.values;
+	}
+
+	var Dict = Elm.Dict.make(localRuntime);
+	var List = Elm.List.make(localRuntime);
+	var Maybe = Elm.Maybe.make(localRuntime);
+	var Task = Elm.Native.Task.make(localRuntime);
+
+
+	function send(settings, request)
+	{
+		return Task.asyncFunction(function(callback) {
+			var req = new XMLHttpRequest();
+
+			// start
+			if (settings.onStart.ctor === 'Just')
+			{
+				req.addEventListener('loadStart', function() {
+					var task = settings.onStart._0;
+					Task.spawn(task);
+				});
+			}
+
+			// progress
+			if (settings.onProgress.ctor === 'Just')
+			{
+				req.addEventListener('progress', function(event) {
+					var progress = !event.lengthComputable
+						? Maybe.Nothing
+						: Maybe.Just({
+							_: {},
+							loaded: event.loaded,
+							total: event.total
+						});
+					var task = settings.onProgress._0(progress);
+					Task.spawn(task);
+				});
+			}
+
+			// end
+			req.addEventListener('error', function() {
+				return callback(Task.fail({ ctor: 'RawNetworkError' }));
+			});
+
+			req.addEventListener('timeout', function() {
+				return callback(Task.fail({ ctor: 'RawTimeout' }));
+			});
+
+			req.addEventListener('load', function() {
+				return callback(Task.succeed(toResponse(req)));
+			});
+
+			req.open(request.verb, request.url, true);
+
+			// set all the headers
+			function setHeader(pair) {
+				req.setRequestHeader(pair._0, pair._1);
+			}
+			A2(List.map, setHeader, request.headers);
+
+			// set the timeout
+			req.timeout = settings.timeout;
+
+			// enable this withCredentials thing
+			req.withCredentials = settings.withCredentials;
+
+			// ask for a specific MIME type for the response
+			if (settings.desiredResponseType.ctor === 'Just')
+			{
+				req.overrideMimeType(settings.desiredResponseType._0);
+			}
+
+			// actuall send the request
+			if(request.body.ctor === "BodyFormData")
+			{
+				req.send(request.body.formData)
+			}
+			else
+			{
+				req.send(request.body._0);
+			}
+		});
+	}
+
+
+	// deal with responses
+
+	function toResponse(req)
+	{
+		var tag = req.responseType === 'blob' ? 'Blob' : 'Text'
+		var response = tag === 'Blob' ? req.response : req.responseText;
+		return {
+			_: {},
+			status: req.status,
+			statusText: req.statusText,
+			headers: parseHeaders(req.getAllResponseHeaders()),
+			url: req.responseURL,
+			value: { ctor: tag, _0: response }
+		};
+	}
+
+
+	function parseHeaders(rawHeaders)
+	{
+		var headers = Dict.empty;
+
+		if (!rawHeaders)
+		{
+			return headers;
+		}
+
+		var headerPairs = rawHeaders.split('\u000d\u000a');
+		for (var i = headerPairs.length; i--; )
+		{
+			var headerPair = headerPairs[i];
+			var index = headerPair.indexOf('\u003a\u0020');
+			if (index > 0)
+			{
+				var key = headerPair.substring(0, index);
+				var value = headerPair.substring(index + 2);
+
+				headers = A3(Dict.update, key, function(oldValue) {
+					if (oldValue.ctor === 'Just')
+					{
+						return Maybe.Just(value + ', ' + oldValue._0);
+					}
+					return Maybe.Just(value);
+				}, headers);
+			}
+		}
+
+		return headers;
+	}
+
+
+	function multipart(dataList)
+	{
+		var formData = new FormData();
+
+		while (dataList.ctor !== '[]')
+		{
+			var data = dataList._0;
+			if (data.ctor === 'StringData')
+			{
+				formData.append(data._0, data._1);
+			}
+			else
+			{
+				var fileName = data._1.ctor === 'Nothing'
+					? undefined
+					: data._1._0;
+				formData.append(data._0, data._2, fileName);
+			}
+			dataList = dataList._1;
+		}
+
+		return { ctor: 'BodyFormData', formData: formData };
+	}
+
+
+	function uriEncode(string)
+	{
+		return encodeURIComponent(string);
+	}
+
+	function uriDecode(string)
+	{
+		return decodeURIComponent(string);
+	}
+
+	return localRuntime.Native.Http.values = {
+		send: F2(send),
+		multipart: multipart,
+		uriEncode: uriEncode,
+		uriDecode: uriDecode
+	};
+};
+Elm.Http = Elm.Http || {};
+Elm.Http.make = function (_elm) {
+   "use strict";
+   _elm.Http = _elm.Http || {};
+   if (_elm.Http.values) return _elm.Http.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Dict = Elm.Dict.make(_elm),
+   $Json$Decode = Elm.Json.Decode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Native$Http = Elm.Native.Http.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $String = Elm.String.make(_elm),
+   $Task = Elm.Task.make(_elm),
+   $Time = Elm.Time.make(_elm);
+   var _op = {};
+   var send = $Native$Http.send;
+   var BadResponse = F2(function (a,b) {
+      return {ctor: "BadResponse",_0: a,_1: b};
+   });
+   var UnexpectedPayload = function (a) {
+      return {ctor: "UnexpectedPayload",_0: a};
+   };
+   var handleResponse = F2(function (handle,response) {
+      if (_U.cmp(200,
+      response.status) < 1 && _U.cmp(response.status,300) < 0) {
+            var _p0 = response.value;
+            if (_p0.ctor === "Text") {
+                  return handle(_p0._0);
+               } else {
+                  return $Task.fail(UnexpectedPayload("Response body is a blob, expecting a string."));
+               }
+         } else return $Task.fail(A2(BadResponse,
+         response.status,
+         response.statusText));
+   });
+   var NetworkError = {ctor: "NetworkError"};
+   var Timeout = {ctor: "Timeout"};
+   var promoteError = function (rawError) {
+      var _p1 = rawError;
+      if (_p1.ctor === "RawTimeout") {
+            return Timeout;
+         } else {
+            return NetworkError;
+         }
+   };
+   var fromJson = F2(function (decoder,response) {
+      var decode = function (str) {
+         var _p2 = A2($Json$Decode.decodeString,decoder,str);
+         if (_p2.ctor === "Ok") {
+               return $Task.succeed(_p2._0);
+            } else {
+               return $Task.fail(UnexpectedPayload(_p2._0));
+            }
+      };
+      return A2($Task.andThen,
+      A2($Task.mapError,promoteError,response),
+      handleResponse(decode));
+   });
+   var RawNetworkError = {ctor: "RawNetworkError"};
+   var RawTimeout = {ctor: "RawTimeout"};
+   var Blob = function (a) {    return {ctor: "Blob",_0: a};};
+   var Text = function (a) {    return {ctor: "Text",_0: a};};
+   var Response = F5(function (a,b,c,d,e) {
+      return {status: a,statusText: b,headers: c,url: d,value: e};
+   });
+   var defaultSettings = {timeout: 0
+                         ,onStart: $Maybe.Nothing
+                         ,onProgress: $Maybe.Nothing
+                         ,desiredResponseType: $Maybe.Nothing
+                         ,withCredentials: false};
+   var post = F3(function (decoder,url,body) {
+      var request = {verb: "POST"
+                    ,headers: _U.list([])
+                    ,url: url
+                    ,body: body};
+      return A2(fromJson,decoder,A2(send,defaultSettings,request));
+   });
+   var Settings = F5(function (a,b,c,d,e) {
+      return {timeout: a
+             ,onStart: b
+             ,onProgress: c
+             ,desiredResponseType: d
+             ,withCredentials: e};
+   });
+   var multipart = $Native$Http.multipart;
+   var FileData = F3(function (a,b,c) {
+      return {ctor: "FileData",_0: a,_1: b,_2: c};
+   });
+   var BlobData = F3(function (a,b,c) {
+      return {ctor: "BlobData",_0: a,_1: b,_2: c};
+   });
+   var blobData = BlobData;
+   var StringData = F2(function (a,b) {
+      return {ctor: "StringData",_0: a,_1: b};
+   });
+   var stringData = StringData;
+   var BodyBlob = function (a) {
+      return {ctor: "BodyBlob",_0: a};
+   };
+   var BodyFormData = {ctor: "BodyFormData"};
+   var ArrayBuffer = {ctor: "ArrayBuffer"};
+   var BodyString = function (a) {
+      return {ctor: "BodyString",_0: a};
+   };
+   var string = BodyString;
+   var Empty = {ctor: "Empty"};
+   var empty = Empty;
+   var getString = function (url) {
+      var request = {verb: "GET"
+                    ,headers: _U.list([])
+                    ,url: url
+                    ,body: empty};
+      return A2($Task.andThen,
+      A2($Task.mapError,
+      promoteError,
+      A2(send,defaultSettings,request)),
+      handleResponse($Task.succeed));
+   };
+   var get = F2(function (decoder,url) {
+      var request = {verb: "GET"
+                    ,headers: _U.list([])
+                    ,url: url
+                    ,body: empty};
+      return A2(fromJson,decoder,A2(send,defaultSettings,request));
+   });
+   var Request = F4(function (a,b,c,d) {
+      return {verb: a,headers: b,url: c,body: d};
+   });
+   var uriDecode = $Native$Http.uriDecode;
+   var uriEncode = $Native$Http.uriEncode;
+   var queryEscape = function (string) {
+      return A2($String.join,
+      "+",
+      A2($String.split,"%20",uriEncode(string)));
+   };
+   var queryPair = function (_p3) {
+      var _p4 = _p3;
+      return A2($Basics._op["++"],
+      queryEscape(_p4._0),
+      A2($Basics._op["++"],"=",queryEscape(_p4._1)));
+   };
+   var url = F2(function (baseUrl,args) {
+      var _p5 = args;
+      if (_p5.ctor === "[]") {
+            return baseUrl;
+         } else {
+            return A2($Basics._op["++"],
+            baseUrl,
+            A2($Basics._op["++"],
+            "?",
+            A2($String.join,"&",A2($List.map,queryPair,args))));
+         }
+   });
+   var TODO_implement_file_in_another_library = {ctor: "TODO_implement_file_in_another_library"};
+   var TODO_implement_blob_in_another_library = {ctor: "TODO_implement_blob_in_another_library"};
+   return _elm.Http.values = {_op: _op
+                             ,getString: getString
+                             ,get: get
+                             ,post: post
+                             ,send: send
+                             ,url: url
+                             ,uriEncode: uriEncode
+                             ,uriDecode: uriDecode
+                             ,empty: empty
+                             ,string: string
+                             ,multipart: multipart
+                             ,stringData: stringData
+                             ,defaultSettings: defaultSettings
+                             ,fromJson: fromJson
+                             ,Request: Request
+                             ,Settings: Settings
+                             ,Response: Response
+                             ,Text: Text
+                             ,Blob: Blob
+                             ,Timeout: Timeout
+                             ,NetworkError: NetworkError
+                             ,UnexpectedPayload: UnexpectedPayload
+                             ,BadResponse: BadResponse
+                             ,RawTimeout: RawTimeout
+                             ,RawNetworkError: RawNetworkError};
 };Elm.Email = Elm.Email || {};
 Elm.Email.make = function (_elm) {
    "use strict";
@@ -11866,11 +12234,20 @@ Elm.Email.make = function (_elm) {
    $Signal = Elm.Signal.make(_elm),
    $String = Elm.String.make(_elm);
    var _op = {};
-   var initModel = {from: "bossman@corporate.me"
-                   ,to: "manager@corporate.me"
-                   ,title: "Corporate Ipsum"
-                   ,body: "Collaboratively administrate empowered markets via plug-and-play\n              networks. Dynamically procrastinate B2C users after installed base\n              benefits. Dramatically visualize customer directed convergence without\n              revolutionary ROI.\n\n              Efficiently unleash cross-media information without cross-media\n              value. Quickly maximize timely deliverables for real-time\n              schemas. Dramatically maintain clicks-and-mortar solutions\n              without functional solutions.\n\n              Completely synergize resource taxing relationships via premier\n              niche markets. Professionally cultivate one-to-one customer\n              service with robust ideas. Dynamically innovate\n              resource-leveling customer service for state of the art customer\n              service."
-                   ,isTruncated: true};
+   var init = F4(function (from$,to$,title$,body$) {
+      return {from: from$
+             ,to: to$
+             ,title: title$
+             ,body: body$
+             ,isTruncated: true};
+   });
+   var equal = F2(function (email1,email2) {
+      var bodyEq = _U.eq(email1.body,email2.body);
+      var titleEq = _U.eq(email1.title,email2.title);
+      var toEq = _U.eq(email1.to,email2.to);
+      var fromEq = _U.eq(email1.from,email2.from);
+      return fromEq && (toEq && (titleEq && bodyEq));
+   });
    var allowedToBeTruncated = function (string) {
       var stringLength = $String.length(string);
       return _U.cmp(stringLength,200) > 0 ? true : false;
@@ -11951,7 +12328,8 @@ Elm.Email.make = function (_elm) {
    return _elm.Email.values = {_op: _op
                               ,update: update
                               ,view: view
-                              ,initModel: initModel
+                              ,equal: equal
+                              ,init: init
                               ,Model: Model
                               ,NoOp: NoOp
                               ,ToggleTruncation: ToggleTruncation};
@@ -11969,6 +12347,9 @@ Elm.Reminder.make = function (_elm) {
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm);
    var _op = {};
+   var equal = F2(function (reminder1,reminder2) {
+      return _U.eq(reminder1.body,reminder2.body);
+   });
    var view = F2(function (address,model) {
       return A2($Html.p,
       _U.list([]),
@@ -11985,6 +12366,7 @@ Elm.Reminder.make = function (_elm) {
                                  ,init: init
                                  ,update: update
                                  ,view: view
+                                 ,equal: equal
                                  ,Model: Model};
 };Elm.TimeUtil = Elm.TimeUtil || {};
 Elm.TimeUtil.make = function (_elm) {
@@ -12173,6 +12555,35 @@ Elm.Item.make = function (_elm) {
             return $Html$Attributes.style(_U.list([]));
          }
    };
+   var equal = F2(function (item1,item2) {
+      var dateEq = _U.eq(item1.date,item2.date);
+      var itemModelEq = function () {
+         var _p4 = {ctor: "_Tuple2"
+                   ,_0: item1.itemModel
+                   ,_1: item2.itemModel};
+         _v4_2: do {
+            if (_p4.ctor === "_Tuple2") {
+                  if (_p4._0.ctor === "EmailModel") {
+                        if (_p4._1.ctor === "EmailModel") {
+                              return A2($Email.equal,_p4._0._0,_p4._1._0);
+                           } else {
+                              break _v4_2;
+                           }
+                     } else {
+                        if (_p4._1.ctor === "ReminderModel") {
+                              return A2($Reminder.equal,_p4._0._0,_p4._1._0);
+                           } else {
+                              break _v4_2;
+                           }
+                     }
+               } else {
+                  break _v4_2;
+               }
+         } while (false);
+         return false;
+      }();
+      return itemModelEq && dateEq;
+   });
    var InputFuncParams = F4(function (a,b,c,d) {
       return {id: a,label: b,type$: c,action: d};
    });
@@ -12192,14 +12603,14 @@ Elm.Item.make = function (_elm) {
                       ,A3($Html$Events.on,
                       "input",
                       $Html$Events.targetValue,
-                      function (_p4) {
-                         return A2($Signal.message,address,params.action(_p4));
+                      function (_p5) {
+                         return A2($Signal.message,address,params.action(_p5));
                       })]),
               _U.list([]))]));
    });
    var showSnoozeDate = function (model) {
-      var _p5 = model.isSnoozed;
-      if (_p5 === true) {
+      var _p6 = model.isSnoozed;
+      if (_p6 === true) {
             return A2($Html.div,
             _U.list([$Html$Attributes.style(_U.list([{ctor: "_Tuple2"
                                                      ,_0: "padding"
@@ -12223,16 +12634,16 @@ Elm.Item.make = function (_elm) {
       model.date)))]));
    };
    var pinButtonText = function (model) {
-      var _p6 = model.pinned;
-      if (_p6 === true) {
+      var _p7 = model.pinned;
+      if (_p7 === true) {
             return "Unpin";
          } else {
             return "Pin";
          }
    };
    var markAsDoneButtonText = function (model) {
-      var _p7 = model.markedAsDone;
-      if (_p7 === true) {
+      var _p8 = model.markedAsDone;
+      if (_p8 === true) {
             return "Undo";
          } else {
             return "Mark as Done";
@@ -12280,15 +12691,15 @@ Elm.Item.make = function (_elm) {
       return {ctor: "EmailAction",_0: a};
    };
    var viewItem = F2(function (address,itemModel) {
-      var _p8 = itemModel;
-      if (_p8.ctor === "EmailModel") {
+      var _p9 = itemModel;
+      if (_p9.ctor === "EmailModel") {
             return A2($Email.view,
             A2($Signal.forwardTo,address,EmailAction),
-            _p8._0);
+            _p9._0);
          } else {
             return A2($Reminder.view,
             A2($Signal.forwardTo,address,ReminderAction),
-            _p8._0);
+            _p9._0);
          }
    });
    var toggleTruncation = EmailAction($Email.ToggleTruncation);
@@ -12355,63 +12766,68 @@ Elm.Item.make = function (_elm) {
       return {ctor: "ReminderModel",_0: a};
    };
    var updateReminderAction = F2(function (reminderAction,model) {
-      var _p9 = model.itemModel;
-      if (_p9.ctor === "EmailModel") {
+      var _p10 = model.itemModel;
+      if (_p10.ctor === "EmailModel") {
             return model;
          } else {
             return _U.update(model,
             {itemModel: ReminderModel(A2($Reminder.update,
             reminderAction,
-            _p9._0))});
+            _p10._0))});
          }
    });
+   var itemTemplate = {itemModel: ReminderModel($Reminder.init("placeholder reminder body"))
+                      ,date: $TimeUtil.stringToTime("2015-01-30")
+                      ,pinned: false
+                      ,markedAsDone: false
+                      ,isFocused: false
+                      ,isPastDeadline: false
+                      ,isSnoozed: false
+                      ,snoozeDateInputValue: ""
+                      ,snoozedUntilDate: 0
+                      ,snoozeInputState: $Dict.empty};
    var newReminderItem = F4(function (body$,
    date$,
    pinned$,
    markedAsDone$) {
-      return {itemModel: ReminderModel($Reminder.init(body$))
-             ,date: $TimeUtil.stringToTime(date$)
-             ,pinned: pinned$
-             ,markedAsDone: markedAsDone$
-             ,isFocused: false
-             ,isPastDeadline: false
-             ,isSnoozed: false
-             ,snoozeDateInputValue: ""
-             ,snoozedUntilDate: 0
-             ,snoozeInputState: $Dict.empty};
+      return _U.update(itemTemplate,
+      {itemModel: ReminderModel($Reminder.init(body$))
+      ,date: $TimeUtil.stringToTime(date$)
+      ,pinned: pinned$
+      ,markedAsDone: markedAsDone$});
    });
    var EmailModel = function (a) {
       return {ctor: "EmailModel",_0: a};
    };
    var updateEmailAction = F2(function (emailAction,model) {
-      var _p10 = model.itemModel;
-      if (_p10.ctor === "EmailModel") {
+      var _p11 = model.itemModel;
+      if (_p11.ctor === "EmailModel") {
             return _U.update(model,
-            {itemModel: EmailModel(A2($Email.update,emailAction,_p10._0))});
+            {itemModel: EmailModel(A2($Email.update,emailAction,_p11._0))});
          } else {
             return model;
          }
    });
    var update = F2(function (action,model) {
-      var _p11 = action;
-      switch (_p11.ctor)
+      var _p12 = action;
+      switch (_p12.ctor)
       {case "NoOp": return model;
          case "ToggleMarkedAsDone": return _U.update(model,
            {markedAsDone: $Basics.not(model.markedAsDone)});
          case "TogglePinned": return _U.update(model,
            {pinned: $Basics.not(model.pinned)});
-         case "EmailAction": return A2(updateEmailAction,_p11._0,model);
+         case "EmailAction": return A2(updateEmailAction,_p12._0,model);
          case "ReminderAction": return A2(updateReminderAction,
-           _p11._0,
+           _p12._0,
            model);
-         case "Focus": return _U.update(model,{isFocused: _p11._0});
+         case "Focus": return _U.update(model,{isFocused: _p12._0});
          case "CheckDeadline": var deadline = model.date;
            return _U.update(model,
-           {isPastDeadline: _U.cmp(deadline,_p11._0) < 0});
+           {isPastDeadline: _U.cmp(deadline,_p12._0) < 0});
          case "Snooze": return _U.update(model,
            {snoozedUntilDate: $TimeUtil.stringToTime(model.snoozeDateInputValue)});
          case "SetSnoozeDate": return _U.update(model,
-           {snoozeDateInputValue: _p11._0});
+           {snoozeDateInputValue: _p12._0});
          case "SetSnoozeInputState":
          var newSnoozeDateInputValue = isValidDate(model.snoozeDateInputValue) ? IsOkay : HasError("Please enter a valid date");
            var snoozeInputState$ = $Dict.fromList(_U.list([{ctor: "_Tuple2"
@@ -12420,13 +12836,29 @@ Elm.Item.make = function (_elm) {
            return _U.update(model,{snoozeInputState: snoozeInputState$});
          default: var snoozeTime = model.snoozedUntilDate;
            return _U.update(model,
-           {isSnoozed: _U.cmp(_p11._0,snoozeTime) < 0});}
+           {isSnoozed: _U.cmp(_p12._0,snoozeTime) < 0});}
+   });
+   var newEmailItem = F5(function (fromValue,
+   toValue,
+   titleValue,
+   dateValue,
+   bodyValue) {
+      return _U.update(itemTemplate,
+      {itemModel: EmailModel(A4($Email.init,
+      fromValue,
+      toValue,
+      titleValue,
+      bodyValue))
+      ,date: $TimeUtil.stringToTime(dateValue)});
    });
    return _elm.Item.values = {_op: _op
                              ,view: view
                              ,update: update
                              ,newReminderItem: newReminderItem
+                             ,newEmailItem: newEmailItem
+                             ,itemTemplate: itemTemplate
                              ,toggleTruncation: toggleTruncation
+                             ,equal: equal
                              ,Model: Model
                              ,EmailModel: EmailModel
                              ,ReminderModel: ReminderModel
@@ -12441,6 +12873,163 @@ Elm.Item.make = function (_elm) {
                              ,SetSnoozeDate: SetSnoozeDate
                              ,SetSnoozeInputState: SetSnoozeInputState
                              ,CheckSnoozeTime: CheckSnoozeTime};
+};Elm.JSONUtil = Elm.JSONUtil || {};
+Elm.JSONUtil.make = function (_elm) {
+   "use strict";
+   _elm.JSONUtil = _elm.JSONUtil || {};
+   if (_elm.JSONUtil.values) return _elm.JSONUtil.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Http = Elm.Http.make(_elm),
+   $Json$Decode = Elm.Json.Decode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $Task = Elm.Task.make(_elm),
+   $Time = Elm.Time.make(_elm);
+   var _op = {};
+   var emailFieldsJSONDecoder = $Json$Decode.keyValuePairs($Json$Decode.string);
+   var emailListJSONDecoder = $Json$Decode.list(emailFieldsJSONDecoder);
+   var emailsJSONDecoder = A2($Json$Decode._op[":="],
+   "emails",
+   emailListJSONDecoder);
+   var clock = $Time.every($Time.minute);
+   var urlOfJSON = "https://api.myjson.com/bins/19lg3";
+   var getJSON = A2($Http.get,emailsJSONDecoder,urlOfJSON);
+   var safeGetJSON = A2($Task.onError,
+   getJSON,
+   function (err) {
+      return $Task.succeed(_U.list([]));
+   });
+   var jsonMailbox = $Signal.mailbox(_U.list([]));
+   var sendJSON = function (emailKVList) {
+      return A2($Signal.send,jsonMailbox.address,emailKVList);
+   };
+   var getJSONAndSendItToMailboxTask = A2($Task.andThen,
+   safeGetJSON,
+   sendJSON);
+   var getJSONAndSendItToMailboxTaskSignal = A2($Signal.map,
+   function (_p0) {
+      return getJSONAndSendItToMailboxTask;
+   },
+   clock);
+   return _elm.JSONUtil.values = {_op: _op
+                                 ,jsonMailbox: jsonMailbox
+                                 ,getJSONAndSendItToMailboxTaskSignal: getJSONAndSendItToMailboxTaskSignal};
+};Elm.Static = Elm.Static || {};
+Elm.Static.make = function (_elm) {
+   "use strict";
+   _elm.Static = _elm.Static || {};
+   if (_elm.Static.values) return _elm.Static.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
+   var _op = {};
+   var emails = _U.list([{from: "bossman@corporate.me"
+                         ,to: "manager@corporate.me"
+                         ,title: "Corporate Ipsum"
+                         ,body: "Collaboratively administrate empowered markets via plug-and-play\n                networks. Dynamically procrastinate B2C users after installed base\n                benefits. Dramatically visualize customer directed convergence without\n                revolutionary ROI.\n\n                Efficiently unleash cross-media information without cross-media\n                value. Quickly maximize timely deliverables for real-time\n                schemas. Dramatically maintain clicks-and-mortar solutions\n                without functional solutions.\n\n                Completely synergize resource taxing relationships via premier\n                niche markets. Professionally cultivate one-to-one customer\n                service with robust ideas. Dynamically innovate\n                resource-leveling customer service for state of the art customer\n                service."
+                         ,date: "2015-01-30"}
+                        ,{from: "hello@test.me"
+                         ,to: "goodbye@test.me"
+                         ,title: "Shorter than 200"
+                         ,body: "This is the body of an email with less than 200 characters."
+                         ,date: "2015-09-30"}]);
+   var reminders = _U.list([{body: "Take out the trash"
+                            ,created: "2016-09-30"}
+                           ,{body: "Groceries",created: "2015-09-25"}]);
+   var Reminder = F2(function (a,b) {
+      return {body: a,created: b};
+   });
+   var Email = F5(function (a,b,c,d,e) {
+      return {from: a,to: b,title: c,body: d,date: e};
+   });
+   return _elm.Static.values = {_op: _op
+                               ,Email: Email
+                               ,Reminder: Reminder
+                               ,reminders: reminders
+                               ,emails: emails};
+};Elm.ItemExtraction = Elm.ItemExtraction || {};
+Elm.ItemExtraction.make = function (_elm) {
+   "use strict";
+   _elm.ItemExtraction = _elm.ItemExtraction || {};
+   if (_elm.ItemExtraction.values)
+   return _elm.ItemExtraction.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Item = Elm.Item.make(_elm),
+   $JSONUtil = Elm.JSONUtil.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $Static = Elm.Static.make(_elm);
+   var _op = {};
+   var getValueFromIndexInList = F2(function (index,list) {
+      var listElem = $List.head($List.reverse(A2($List.take,
+      index + 1,
+      list)));
+      var _p0 = listElem;
+      if (_p0.ctor === "Just") {
+            return _p0._0._1;
+         } else {
+            return "";
+         }
+   });
+   var parseSingleEmailFromJSON = function (singleEmailList) {
+      var bodyValue = A2(getValueFromIndexInList,
+      0,
+      singleEmailList);
+      var dateValue = A2(getValueFromIndexInList,1,singleEmailList);
+      var titleValue = A2(getValueFromIndexInList,2,singleEmailList);
+      var toValue = A2(getValueFromIndexInList,3,singleEmailList);
+      var fromValue = A2(getValueFromIndexInList,4,singleEmailList);
+      return A5($Item.newEmailItem,
+      fromValue,
+      toValue,
+      titleValue,
+      dateValue,
+      bodyValue);
+   };
+   var parseEmailListFromJSON = function (emailKVList) {
+      return A2($List.map,parseSingleEmailFromJSON,emailKVList);
+   };
+   var staticEmailToItem = function (staticEmail) {
+      return A5($Item.newEmailItem,
+      staticEmail.from,
+      staticEmail.to,
+      staticEmail.title,
+      staticEmail.date,
+      staticEmail.body);
+   };
+   var staticReminderToItem = function (staticReminder) {
+      return A4($Item.newReminderItem,
+      staticReminder.body,
+      staticReminder.created,
+      false,
+      false);
+   };
+   var getEmailsFromStatic = A2($List.map,
+   staticEmailToItem,
+   $Static.emails);
+   var getRemindersFromStatic = A2($List.map,
+   staticReminderToItem,
+   $Static.reminders);
+   return _elm.ItemExtraction.values = {_op: _op
+                                       ,getRemindersFromStatic: getRemindersFromStatic
+                                       ,getEmailsFromStatic: getEmailsFromStatic
+                                       ,staticReminderToItem: staticReminderToItem
+                                       ,staticEmailToItem: staticEmailToItem
+                                       ,parseEmailListFromJSON: parseEmailListFromJSON
+                                       ,parseSingleEmailFromJSON: parseSingleEmailFromJSON
+                                       ,getValueFromIndexInList: getValueFromIndexInList};
 };Elm.ItemList = Elm.ItemList || {};
 Elm.ItemList.make = function (_elm) {
    "use strict";
@@ -12452,6 +13041,8 @@ Elm.ItemList.make = function (_elm) {
    $Html = Elm.Html.make(_elm),
    $Html$Attributes = Elm.Html.Attributes.make(_elm),
    $Item = Elm.Item.make(_elm),
+   $ItemExtraction = Elm.ItemExtraction.make(_elm),
+   $JSONUtil = Elm.JSONUtil.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
@@ -12679,19 +13270,38 @@ Elm.ItemList.make = function (_elm) {
              ,_0: _p30._0
              ,_1: A2($Item.update,$Item.CheckDeadline(currentTime),_p30._1)};
    });
+   var checkIfItemInList = F2(function (itemList,itemModel) {
+      var isEqualToGivenModel = function (_p31) {
+         var _p32 = _p31;
+         return A2($Item.equal,itemModel,_p32._1);
+      };
+      var listOfBools = A2($List.map,isEqualToGivenModel,itemList);
+      return A3($List.foldr,
+      F2(function (x,y) {    return x || y;}),
+      false,
+      listOfBools);
+   });
+   var addItemToModel = F2(function (item,model) {
+      var newItem = {ctor: "_Tuple2",_0: model.nextID,_1: item};
+      var newItemList = A2($Basics._op["++"],
+      model.itemList,
+      _U.list([newItem]));
+      return _U.update(model,
+      {itemList: newItemList,nextID: model.nextID + 1});
+   });
    var update = F2(function (action,model) {
-      var _p31 = action;
-      switch (_p31.ctor)
+      var _p33 = action;
+      switch (_p33.ctor)
       {case "NoOp": return model;
-         case "ItemAction": var updateItem = function (_p32) {
-              var _p33 = _p32;
-              var _p35 = _p33._1;
-              var _p34 = _p33._0;
-              return _U.eq(_p34,_p31._0) ? {ctor: "_Tuple2"
-                                           ,_0: _p34
-                                           ,_1: A2($Item.update,_p31._1,_p35)} : {ctor: "_Tuple2"
-                                                                                 ,_0: _p34
-                                                                                 ,_1: _p35};
+         case "ItemAction": var updateItem = function (_p34) {
+              var _p35 = _p34;
+              var _p37 = _p35._1;
+              var _p36 = _p35._0;
+              return _U.eq(_p36,_p33._0) ? {ctor: "_Tuple2"
+                                           ,_0: _p36
+                                           ,_1: A2($Item.update,_p33._1,_p37)} : {ctor: "_Tuple2"
+                                                                                 ,_0: _p36
+                                                                                 ,_1: _p37};
            };
            var updatedModel = _U.update(model,
            {itemList: A2($List.map,updateItem,model.itemList)});
@@ -12699,21 +13309,14 @@ Elm.ItemList.make = function (_elm) {
            model.indexSelectedItem,
            updatedModel);
          case "AddReminder": var newReminder = A4($Item.newReminderItem,
-           _p31._0,
-           _p31._1,
-           _p31._2,
-           _p31._3);
-           var newItem = {ctor: "_Tuple2"
-                         ,_0: model.nextID
-                         ,_1: newReminder};
-           var newItemList = A2($Basics._op["++"],
-           model.itemList,
-           _U.list([newItem]));
-           return _U.update(model,
-           {itemList: newItemList,nextID: model.nextID + 1});
-         case "ChangeFocus": return A2(changeFocusOfModel,_p31._0,model);
+           _p33._0,
+           _p33._1,
+           _p33._2,
+           _p33._3);
+           return A2(addItemToModel,newReminder,model);
+         case "ChangeFocus": return A2(changeFocusOfModel,_p33._0,model);
          case "ReverseSortingOrder": var reversedModel = _U.update(model,
-           {reversedSortingOrder: _p31._0});
+           {reversedSortingOrder: _p33._0});
            return A2(changeFocusOfModel,
            model.indexSelectedItem,
            reversedModel);
@@ -12728,14 +13331,15 @@ Elm.ItemList.make = function (_elm) {
            return _U.update(modelToggledVisibility,
            {indexSelectedItem: currentIndexMod});
          case "CheckDeadlines": var updatedItemList = A2($List.map,
-           checkAndUpdateDeadline(_p31._0),
+           checkAndUpdateDeadline(_p33._0),
            model.itemList);
            return _U.update(model,{itemList: updatedItemList});
          case "CheckSnoozeTimes": var updatedItemList = A2($List.map,
-           checkSnoozeTimes(_p31._0),
+           checkSnoozeTimes(_p33._0),
            model.itemList);
            return _U.update(model,{itemList: updatedItemList});
-         default: var currentIndex = model.indexSelectedItem;
+         case "ToggleVisibilitySnoozedSection":
+         var currentIndex = model.indexSelectedItem;
            var modelToggledVisibility = _U.update(model,
            {snoozedSectionVisible: $Basics.not(model.snoozedSectionVisible)});
            var totalListLength = totalListLengthOfVisibleSections(modelToggledVisibility);
@@ -12743,8 +13347,22 @@ Elm.ItemList.make = function (_elm) {
            currentIndex,
            totalListLength);
            return _U.update(modelToggledVisibility,
-           {indexSelectedItem: currentIndexMod});}
+           {indexSelectedItem: currentIndexMod});
+         default:
+         var itemsFromJSON = $ItemExtraction.parseEmailListFromJSON(_p33._0);
+           var newItems = A2($List.filter,
+           function (_p38) {
+              return $Basics.not(A2(checkIfItemInList,
+              model.itemList,
+              _p38));
+           },
+           itemsFromJSON);
+           var newModel = A3($List.foldr,addItemToModel,model,newItems);
+           return A2(changeFocusOfModel,0,newModel);}
    });
+   var AddItemsFromJSON = function (a) {
+      return {ctor: "AddItemsFromJSON",_0: a};
+   };
    var ToggleVisibilitySnoozedSection = {ctor: "ToggleVisibilitySnoozedSection"};
    var CheckSnoozeTimes = function (a) {
       return {ctor: "CheckSnoozeTimes",_0: a};
@@ -12777,16 +13395,16 @@ Elm.ItemList.make = function (_elm) {
    var ItemAction = F2(function (a,b) {
       return {ctor: "ItemAction",_0: a,_1: b};
    });
-   var viewItem = F2(function (address,_p36) {
-      var _p37 = _p36;
+   var viewItem = F2(function (address,_p39) {
+      var _p40 = _p39;
       return A2($Item.view,
-      A2($Signal.forwardTo,address,ItemAction(_p37._0)),
-      _p37._1);
+      A2($Signal.forwardTo,address,ItemAction(_p40._0)),
+      _p40._1);
    });
    var viewToDoDiv = F2(function (address,model) {
       var toDoModel = getToDoModelNotSnoozed(model);
-      var _p38 = $List.isEmpty(toDoModel.itemList);
-      if (_p38 === true) {
+      var _p41 = $List.isEmpty(toDoModel.itemList);
+      if (_p41 === true) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedToDoModel = sortModel(toDoModel);
@@ -12800,8 +13418,8 @@ Elm.ItemList.make = function (_elm) {
    });
    var viewDoneDiv = F2(function (address,model) {
       var doneModel = getDoneModelNotSnoozed(model);
-      var _p39 = shouldDoneItemsBeShown(doneModel);
-      if (_p39 === false) {
+      var _p42 = shouldDoneItemsBeShown(doneModel);
+      if (_p42 === false) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedDoneModel = sortModel(doneModel);
@@ -12814,8 +13432,8 @@ Elm.ItemList.make = function (_elm) {
          }
    });
    var viewSnoozeSection = F2(function (address,model) {
-      var _p40 = model.snoozedSectionVisible;
-      if (_p40 === true) {
+      var _p43 = model.snoozedSectionVisible;
+      if (_p43 === true) {
             var snoozedModel = A2(filterOnSnoozed,model,true);
             var items = A2($List.map,
             viewItem(address),
@@ -12853,6 +13471,12 @@ Elm.ItemList.make = function (_elm) {
       return A2(ItemAction,idSelecteditem,$Item.ToggleMarkedAsDone);
    };
    var NoOp = {ctor: "NoOp"};
+   var emptyModel = {itemList: _U.list([])
+                    ,nextID: 1
+                    ,indexSelectedItem: 0
+                    ,reversedSortingOrder: false
+                    ,doneItemsVisible: true
+                    ,snoozedSectionVisible: false};
    var Model = F6(function (a,b,c,d,e,f) {
       return {itemList: a
              ,nextID: b
@@ -12871,6 +13495,8 @@ Elm.ItemList.make = function (_elm) {
                                  ,toggleTruncationAction: toggleTruncationAction
                                  ,togglePinnedAction: togglePinnedAction
                                  ,toggleDoneAction: toggleDoneAction
+                                 ,emptyModel: emptyModel
+                                 ,addItemToModel: addItemToModel
                                  ,Model: Model
                                  ,NoOp: NoOp
                                  ,ItemAction: ItemAction
@@ -12880,7 +13506,8 @@ Elm.ItemList.make = function (_elm) {
                                  ,ToggleVisiblityDoneItems: ToggleVisiblityDoneItems
                                  ,CheckDeadlines: CheckDeadlines
                                  ,CheckSnoozeTimes: CheckSnoozeTimes
-                                 ,ToggleVisibilitySnoozedSection: ToggleVisibilitySnoozedSection};
+                                 ,ToggleVisibilitySnoozedSection: ToggleVisibilitySnoozedSection
+                                 ,AddItemsFromJSON: AddItemsFromJSON};
 };Elm.Initial = Elm.Initial || {};
 Elm.Initial.make = function (_elm) {
    "use strict";
@@ -12889,71 +13516,26 @@ Elm.Initial.make = function (_elm) {
    var _U = Elm.Native.Utils.make(_elm),
    $Basics = Elm.Basics.make(_elm),
    $Debug = Elm.Debug.make(_elm),
-   $Dict = Elm.Dict.make(_elm),
-   $Email = Elm.Email.make(_elm),
-   $Item = Elm.Item.make(_elm),
+   $ItemExtraction = Elm.ItemExtraction.make(_elm),
    $ItemList = Elm.ItemList.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
-   $Reminder = Elm.Reminder.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm),
-   $TimeUtil = Elm.TimeUtil.make(_elm);
+   $Signal = Elm.Signal.make(_elm);
    var _op = {};
-   var reminderEx2 = {body: "Groceries"};
-   var reminderEx1 = {body: "Take out the trash"};
-   var emailEx2 = {from: "hello@test.me"
-                  ,to: "goodbye@test.me"
-                  ,title: "Shorter than 200"
-                  ,body: "This is the body of an email with less than 200 characters."
-                  ,isTruncated: false};
-   var emailEx1 = {from: "bossman@corporate.me"
-                  ,to: "manager@corporate.me"
-                  ,title: "Corporate Ipsum"
-                  ,body: "Collaboratively administrate empowered markets via plug-and-play\n              networks. Dynamically procrastinate B2C users after installed base\n              benefits. Dramatically visualize customer directed convergence without\n              revolutionary ROI.\n\n              Efficiently unleash cross-media information without cross-media\n              value. Quickly maximize timely deliverables for real-time\n              schemas. Dramatically maintain clicks-and-mortar solutions\n              without functional solutions.\n\n              Completely synergize resource taxing relationships via premier\n              niche markets. Professionally cultivate one-to-one customer\n              service with robust ideas. Dynamically innovate\n              resource-leveling customer service for state of the art customer\n              service."
-                  ,isTruncated: true};
-   var itemTemplate = {itemModel: $Item.ReminderModel($Reminder.init("placeholder reminder body"))
-                      ,date: $TimeUtil.stringToTime("2015-01-30")
-                      ,pinned: false
-                      ,markedAsDone: false
-                      ,isFocused: false
-                      ,isPastDeadline: false
-                      ,isSnoozed: false
-                      ,snoozeDateInputValue: ""
-                      ,snoozedUntilDate: 0
-                      ,snoozeInputState: $Dict.empty};
-   var itemEx1 = _U.update(itemTemplate,
-   {itemModel: $Item.EmailModel(emailEx1)});
-   var itemEx2 = _U.update(itemTemplate,
-   {itemModel: $Item.EmailModel(emailEx2)
-   ,date: $TimeUtil.stringToTime("2015-09-30")});
-   var itemEx3 = _U.update(itemTemplate,
-   {itemModel: $Item.ReminderModel(reminderEx1)
-   ,date: $TimeUtil.stringToTime("2016-09-30")});
-   var itemEx4 = _U.update(itemTemplate,
-   {itemModel: $Item.ReminderModel(reminderEx2)
-   ,date: $TimeUtil.stringToTime("2015-09-25")});
-   var initialItemList = {itemList: _U.list([{ctor: "_Tuple2"
-                                             ,_0: 1
-                                             ,_1: itemEx1}
-                                            ,{ctor: "_Tuple2",_0: 2,_1: itemEx2}
-                                            ,{ctor: "_Tuple2",_0: 3,_1: itemEx3}
-                                            ,{ctor: "_Tuple2",_0: 4,_1: itemEx4}])
-                         ,nextID: 5
-                         ,indexSelectedItem: 0
-                         ,reversedSortingOrder: false
-                         ,doneItemsVisible: true
-                         ,snoozedSectionVisible: false};
+   var initialItemList = function () {
+      var initialItems = A2($Basics._op["++"],
+      $ItemExtraction.getRemindersFromStatic,
+      $ItemExtraction.getEmailsFromStatic);
+      var itemListModel = A3($List.foldr,
+      $ItemList.addItemToModel,
+      $ItemList.emptyModel,
+      initialItems);
+      return A2($ItemList.update,
+      $ItemList.ChangeFocus(0),
+      itemListModel);
+   }();
    return _elm.Initial.values = {_op: _op
-                                ,itemTemplate: itemTemplate
-                                ,itemEx1: itemEx1
-                                ,emailEx1: emailEx1
-                                ,itemEx2: itemEx2
-                                ,emailEx2: emailEx2
-                                ,itemEx3: itemEx3
-                                ,reminderEx1: reminderEx1
-                                ,itemEx4: itemEx4
-                                ,reminderEx2: reminderEx2
                                 ,initialItemList: initialItemList};
 };Elm.AddReminderDecorator = Elm.AddReminderDecorator || {};
 Elm.AddReminderDecorator.make = function (_elm) {
@@ -13069,6 +13651,9 @@ Elm.AddReminderDecorator.make = function (_elm) {
       return ItemListAction($ItemList.CheckSnoozeTimes(currentTime));
    };
    var toggleVisibilitySnoozedSection = ItemListAction($ItemList.ToggleVisibilitySnoozedSection);
+   var addItemsFromJSONAction = function (listOfItems) {
+      return ItemListAction($ItemList.AddItemsFromJSON(listOfItems));
+   };
    var SubmitReminder = {ctor: "SubmitReminder"};
    var SetInputState = {ctor: "SetInputState"};
    var SetReminderDate = function (a) {
@@ -13192,6 +13777,7 @@ Elm.AddReminderDecorator.make = function (_elm) {
                                              ,checkSnoozeTimeOfItems: checkSnoozeTimeOfItems
                                              ,toggleVisibilityDoneSection: toggleVisibilityDoneSection
                                              ,toggleVisibilitySnoozedSection: toggleVisibilitySnoozedSection
+                                             ,addItemsFromJSONAction: addItemsFromJSONAction
                                              ,init: init
                                              ,Model: Model
                                              ,NoOp: NoOp
@@ -13360,16 +13946,14 @@ Elm.HotKeyDecorator.make = function (_elm) {
    var AddReminderDecoratorAction = function (a) {
       return {ctor: "AddReminderDecoratorAction",_0: a};
    };
-   var viewAddReminderDecorator = F2(function (address,model) {
+   var view = F2(function (address,model) {
       return A2($AddReminderDecorator.view,
       A2($Signal.forwardTo,address,AddReminderDecoratorAction),
       model.addReminderDecorator);
    });
-   var view = F2(function (address,model) {
-      return A2($Html.div,
-      _U.list([]),
-      _U.list([A2(viewAddReminderDecorator,address,model)]));
-   });
+   var addItemsFromJSONAction = function (listOfItems) {
+      return AddReminderDecoratorAction($AddReminderDecorator.addItemsFromJSONAction(listOfItems));
+   };
    var NormalSortHK = {ctor: "NormalSortHK"};
    var normalSorting = A2($Signal.map,
    $Debug.watch("normalSorting"),
@@ -13402,11 +13986,10 @@ Elm.HotKeyDecorator.make = function (_elm) {
                                                             ,toggleVisibilityDoneSection
                                                             ,toggleVisibilityReminderSection
                                                             ,toggleVisibilitySnoozedSection]));
+   var totalActionSignal = $Signal.mergeMany(_U.list([mergedHotkeyActionSignal
+                                                     ,timedActionsSignal]));
    var NoOp = {ctor: "NoOp"};
    var actions = $Signal.mailbox(NoOp);
-   var totalActionSignal = $Signal.mergeMany(_U.list([mergedHotkeyActionSignal
-                                                     ,timedActionsSignal
-                                                     ,actions.signal]));
    var init = {addReminderDecorator: $AddReminderDecorator.init};
    var model = A3($Signal.foldp,update,init,totalActionSignal);
    var main = A2($Signal.map,view(actions.address),model);
@@ -13417,7 +14000,11 @@ Elm.HotKeyDecorator.make = function (_elm) {
                                         ,model: model
                                         ,view: view
                                         ,update: update
-                                        ,actions: actions};
+                                        ,actions: actions
+                                        ,addItemsFromJSONAction: addItemsFromJSONAction
+                                        ,init: init
+                                        ,totalActionSignal: totalActionSignal
+                                        ,Model: Model};
 };Elm.Main = Elm.Main || {};
 Elm.Main.make = function (_elm) {
    "use strict";
@@ -13428,13 +14015,69 @@ Elm.Main.make = function (_elm) {
    $Debug = Elm.Debug.make(_elm),
    $HotKeyDecorator = Elm.HotKeyDecorator.make(_elm),
    $Html = Elm.Html.make(_elm),
+   $Http = Elm.Http.make(_elm),
+   $JSONUtil = Elm.JSONUtil.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
+   $Signal = Elm.Signal.make(_elm),
+   $Task = Elm.Task.make(_elm);
    var _op = {};
-   var main = A2($Signal.map,
-   $HotKeyDecorator.view($HotKeyDecorator.actions.address),
-   $HotKeyDecorator.model);
-   return _elm.Main.values = {_op: _op,main: main};
+   var update = F2(function (action,model) {
+      var _p0 = action;
+      switch (_p0.ctor)
+      {case "NoOp": return model;
+         case "HotKeyDecoratorAction": return _U.update(model,
+           {hotKeyDecorator: A2($HotKeyDecorator.update,
+           _p0._0,
+           model.hotKeyDecorator)});
+         default: return _U.update(model,
+           {hotKeyDecorator: A2($HotKeyDecorator.update,
+           $HotKeyDecorator.addItemsFromJSONAction(_p0._0),
+           model.hotKeyDecorator)});}
+   });
+   var init = {hotKeyDecorator: $HotKeyDecorator.init};
+   var AddItems = function (a) {
+      return {ctor: "AddItems",_0: a};
+   };
+   var jsonResultSignal = A2($Signal.map,
+   AddItems,
+   $JSONUtil.jsonMailbox.signal);
+   var HotKeyDecoratorAction = function (a) {
+      return {ctor: "HotKeyDecoratorAction",_0: a};
+   };
+   var view = F2(function (address,model) {
+      return A2($HotKeyDecorator.view,
+      A2($Signal.forwardTo,address,HotKeyDecoratorAction),
+      model.hotKeyDecorator);
+   });
+   var hotKeyActionSignal = A2($Signal.map,
+   function (hkAction) {
+      return HotKeyDecoratorAction(hkAction);
+   },
+   $HotKeyDecorator.totalActionSignal);
+   var NoOp = {ctor: "NoOp"};
+   var actions = $Signal.mailbox(NoOp);
+   var totalSignal = $Signal.mergeMany(_U.list([hotKeyActionSignal
+                                               ,jsonResultSignal
+                                               ,actions.signal]));
+   var model = A3($Signal.foldp,update,init,totalSignal);
+   var main = A2($Signal.map,view(actions.address),model);
+   var Model = function (a) {    return {hotKeyDecorator: a};};
+   var fetchJSON = Elm.Native.Task.make(_elm).performSignal("fetchJSON",
+   $JSONUtil.getJSONAndSendItToMailboxTaskSignal);
+   return _elm.Main.values = {_op: _op
+                             ,Model: Model
+                             ,NoOp: NoOp
+                             ,HotKeyDecoratorAction: HotKeyDecoratorAction
+                             ,AddItems: AddItems
+                             ,init: init
+                             ,update: update
+                             ,view: view
+                             ,hotKeyActionSignal: hotKeyActionSignal
+                             ,jsonResultSignal: jsonResultSignal
+                             ,totalSignal: totalSignal
+                             ,model: model
+                             ,actions: actions
+                             ,main: main};
 };</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script></body></html>
