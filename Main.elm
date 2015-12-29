@@ -7,7 +7,7 @@ import Html exposing ( Html )
 import Signal
 
 import JSONUtil exposing (jsonMailbox)
-import HotKeyDecorator exposing (model, Model, view, update, actions, Action
+import HotKeyDecorator exposing (Model, view, update, Action
                                 , addItemsFromJSONAction, init)
 import Task exposing (Task)
 import Http
@@ -71,12 +71,19 @@ import Http
 -- * On startup, read e-mails from a Json document at this url:
 -- * http://people.cs.kuleuven.be/~bob.reynders/2015-2016/emails.json
 -- Status: Completed / Attempted / Unattempted
--- Summary: Unattempted
-
+-- Summary: Completed
+-- The application actually reads e-mails from this url:
+-- "https://api.myjson.com/bins/19lg3".
+-- This was suggested on the Toledo discussion forum to deal with cross-origin problems.
+-- (The url "http://myjson.com/19lg3" was suggested,
+--   but the former url points to pure JSON.)
 
 -- * Periodically check for e-mails from Json (same url).
 -- Status: Completed / Attempted / Unattempted
--- Summary: Unattempted
+-- Summary: Completed
+-- Every minute, the url will be checked for new e-mails.
+-- Only e-mails that aren't already in the item list will be added.
+-- The check for duplicates is done by simply checking every field for equality.
 
 
 -- * Add persistence to your application by using Html local storage so that
@@ -91,11 +98,8 @@ import Http
 -- A section to see all the snoozed items can be toggled using ALT + W
 -- See also the summary of the snoozed item feature.
 
+
 -- get the email info *and then* send the result to our mailbox
-
-
---port fetchJSON : Task Http.Error ()
---port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTask
 port fetchJSON : Signal (Task Http.Error ())
 port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTaskSignal
 
@@ -135,7 +139,6 @@ view :  Signal.Address Action -> Model -> Html
 view address model =
   HotKeyDecorator.view (Signal.forwardTo address HotKeyDecoratorAction) model.hotKeyDecorator
 
-
 -- SIGNALS ---------------------------------------------------------------------
 hotKeyActionSignal : Signal Action
 hotKeyActionSignal =
@@ -159,7 +162,7 @@ actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
 
--- Start of programs
+-- Start of program
 main : Signal Html
 main =
   Signal.map (view actions.address) model

@@ -1,5 +1,5 @@
 module HotKeyDecorator
-  (model, Model, view, update, actions, Action
+  ( Model, view, update, Action
   , addItemsFromJSONAction, init, totalActionSignal) where
 {--
 The HotKeyDecorator module contains a Model and functions
@@ -231,24 +231,9 @@ addItemsFromJSONAction : List(List(String, String)) ->  Action
 addItemsFromJSONAction listOfItems =
   AddReminderDecoratorAction (AddReminderDecorator.addItemsFromJSONAction listOfItems)
 
--- MAIN ------------------------------------------------------------------------
+-- TOTAL SIGNAL ----------------------------------------------------------------
 totalActionSignal : Signal Action
 totalActionSignal =
   Signal.mergeMany [ mergedHotkeyActionSignal
                    , timedActionsSignal
-                   --, actions.signal
                    ]
-
-
-main : Signal Html
-main =
-  Signal.map (view actions.address) model
-
-
-model : Signal Model
-model = Signal.foldp update init totalActionSignal
-
-
-actions : Signal.Mailbox Action
-actions =
-  Signal.mailbox NoOp
