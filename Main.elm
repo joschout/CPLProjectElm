@@ -9,7 +9,6 @@ import Signal
 import JSONUtil exposing (jsonMailbox)
 import HotKeyDecorator exposing (model, Model, view, update, actions, Action
                                 , addItemsFromJSONAction, init)
-import Initial exposing (initialItemList)
 import Task exposing (Task)
 import Http
 

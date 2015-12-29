@@ -2,11 +2,28 @@ module ItemExtraction where
 
 import Item
 import JSONUtil exposing (EmailKVString)
+import Static
+-- EXTRACTING ITEMS FROM STATIC ------------------------------------------------
 
+getRemindersFromStatic : List Item.Model
+getRemindersFromStatic =
+  List.map staticReminderToItem Static.reminders
 
+getEmailsFromStatic : List Item.Model
+getEmailsFromStatic =
+  List.map staticEmailToItem Static.emails
 
+staticReminderToItem : Static.Reminder -> Item.Model
+staticReminderToItem staticReminder =
+  Item.newReminderItem staticReminder.body staticReminder.created False False
+  -- newReminderItem body' date' pinned' markedAsDone'
 
--- EXTRACTING ITEMS FROM JASON -------------------------------------------------
+staticEmailToItem : Static.Email -> Item.Model
+staticEmailToItem staticEmail =
+  Item.newEmailItem staticEmail.from staticEmail.to staticEmail.title staticEmail.date staticEmail.body
+  -- newEmailItem fromValue toValue titleValue dateValue bodyValue
+
+-- EXTRACTING ITEMS FROM JSON --------------------------------------------------
 parseEmailListFromJSON : List( EmailKVString ) -> List Item.Model
 parseEmailListFromJSON emailKVList =
   List.map parseSingleEmailFromJSON emailKVList

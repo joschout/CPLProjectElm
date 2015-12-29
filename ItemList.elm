@@ -3,6 +3,7 @@ module ItemList
   , focusOnPreviousItemAction, focusOnNextItemAction
   , normalSortingAction, reverseSortingAction
   , toggleTruncationAction, togglePinnedAction, toggleDoneAction
+  , emptyModel, addItemToModel
   ) where
 
 {--
@@ -30,6 +31,16 @@ type alias Model =
  }
 
 type alias ID = Int
+
+emptyModel : Model
+emptyModel =
+  { itemList = []
+  , nextID = 1
+  , indexSelectedItem = 0
+  , reversedSortingOrder = False
+  , doneItemsVisible = True
+  , snoozedSectionVisible = False
+  }
 
 -- UPDATE ----------------------------------------------------------------------
 type Action
@@ -99,7 +110,8 @@ update action model =
     AddItemsFromJSON list ->
       let itemsFromJSON = ItemExtraction.parseEmailListFromJSON list
           newItems = List.filter (not << checkIfItemInList model.itemList) itemsFromJSON
-      in List.foldr addItemToModel model newItems
+          newModel = List.foldr addItemToModel model newItems
+      in changeFocusOfModel 0 newModel
 
 addItemToModel : Item.Model -> Model -> Model
 addItemToModel item model =
