@@ -1,6 +1,8 @@
 module Email
   ( Model, Action (..) , update, view, initModel) where
-
+{--
+The Email module contains the logic for Email items.
+--}
 import Html exposing (..)
 import Html.Events exposing (onClick)
 import String

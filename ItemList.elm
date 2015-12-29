@@ -5,6 +5,12 @@ module ItemList
   , toggleTruncationAction, togglePinnedAction, toggleDoneAction
   ) where
 
+{--
+The ItemList module contains the model and functions for representing the item feed.
+More specifically, its Model contains a list of all the items in the application.
+It also contains information about how this list of items must be viewed.
+That os
+--}
 import Item exposing (Model, view, newReminderItem, toggleTruncation, Action)
 import Html exposing (..)
 import Html.Attributes exposing (style)
@@ -13,12 +19,12 @@ import Time exposing (Time)
 -- MODEL -----------------------------------------------------------------------
 type alias Model =
    { itemList : List (ID, Item.Model)
-   , nextID : ID
+   , nextID : ID -- used when adding a new item to the list
    , indexSelectedItem : Int
     -- index of the selected item in the ordered list
-   , reversedSortingOrder : Bool
-   , doneItemsVisible : Bool
-   , snoozedSectionVisible : Bool
+   , reversedSortingOrder : Bool -- should the sorting order be reversed?
+   , doneItemsVisible : Bool -- should the Done section be visible?
+   , snoozedSectionVisible : Bool -- should the Snoozed section be visible?
  }
 
 type alias ID = Int
@@ -73,7 +79,6 @@ update action model =
           totalListLength = totalListLengthOfVisibleSections modelToggledVisibility
           currentIndexMod = currentIndex % totalListLength
       in { modelToggledVisibility | indexSelectedItem = currentIndexMod}
-                                  --, itemList = List.map (changeFocusOfItem currentIndexMod) model.itemList}
 
     CheckDeadlines currentTime ->
       let updatedItemList
@@ -91,24 +96,33 @@ update action model =
           totalListLength = totalListLengthOfVisibleSections modelToggledVisibility
           currentIndexMod = currentIndex % totalListLength
       in { modelToggledVisibility | indexSelectedItem = currentIndexMod }
-                                  --  , itemList = List.map (changeFocusOfItem currentIndexMod) model.itemList }
 
+-- checks the deadline for the given item to the given time
+-- and returns the updated item
 checkAndUpdateDeadline : Time -> (ID, Item.Model) -> (ID, Item.Model)
 checkAndUpdateDeadline currentTime (id, itemModel) =
   (id, (Item.update (Item.CheckDeadline currentTime) itemModel))
 
+-- checks the snooze time for the given item to the given time
+-- and returns the checked item
 checkSnoozeTimes : Time -> (ID, Item.Model) -> (ID, Item.Model)
 checkSnoozeTimes currentTime (id, itemModel) =
   (id, (Item.update (Item.CheckSnoozeTime currentTime) itemModel))
 
 -- CHANGING FOCUS --------------------------------------------------------------
+
+-- Returns a model where the focused item is the item corresponding
+-- to the given index in the visible list of the given model.
 changeFocusOfModel : Int -> Model -> Model
 changeFocusOfModel newIndex model =
   let idNewFocusedItem
-        = getIdFromIndexInUnsortedModelList newIndex model
+        = getIDFromIndexInVisibleItemList newIndex model
   in { model | indexSelectedItem = newIndex,
                itemList = List.map (changeFocusOfItem idNewFocusedItem) model.itemList}
 
+-- Checks whether the given ID corresponds to the ID of the given (ID, item)-tuple.
+-- If the IDs are equal, the item is focused.
+-- If they are not equal,the item is not focused.
 changeFocusOfItem : ID -> (ID, Item.Model) -> (ID, Item.Model)
 changeFocusOfItem correctID (itemID, itemModel) =
   case correctID == itemID of
@@ -117,8 +131,16 @@ changeFocusOfItem correctID (itemID, itemModel) =
     False ->
       (itemID, (Item.update (Item.Focus False) itemModel))
 
-getIdFromIndexInUnsortedModelList : Int -> Model -> ID
-getIdFromIndexInUnsortedModelList index model =
+-- Returns the ID from the item corresponding to
+-- the given index in the list of items that are currently visible.
+-- This function first creates a sorted list,
+-- containing all items that are currently visible on screen.
+-- This list is sorted according to the viewing order of the visible items,
+-- i.e. items higher on screen are items earlier in the list.
+-- It then takes from that list the (ID, item) at the given index
+-- and returns its ID.
+getIDFromIndexInVisibleItemList : Int -> Model -> ID
+getIDFromIndexInVisibleItemList index model =
   let sortedToDoModel = sortModel
                       <| getToDoModelNotSnoozed model
       sortedDoneItemsList =
@@ -137,11 +159,12 @@ getIdFromIndexInUnsortedModelList index model =
           False ->
             []
       totalSortedList = sortedToDoModel.itemList ++ sortedDoneItemsList ++ snoozedItemsList
-  in getIdFromIndexInSortedList index totalSortedList
+  in getIdFromIndexInList index totalSortedList
 
-
-getIdFromIndexInSortedList : Int -> List(ID, Item.Model) -> ID
-getIdFromIndexInSortedList index list =
+-- Takes the (ID, item)-tuple at the given ID in the given list
+-- and returns the ID.
+getIdFromIndexInList : Int -> List(ID, Item.Model) -> ID
+getIdFromIndexInList index list =
   let listElem = List.head
       <| List.reverse
       <| List.take (index + 1) list
@@ -151,7 +174,11 @@ getIdFromIndexInSortedList index list =
     Nothing ->
       -1
 
---------------------------------------------------------------------------------s
+-- Returns the index of the next item in the item feed.
+-- It does this by taking the index of the currently focused item,
+-- incrementing that index by 1,
+-- calculating the number of items visible
+-- and returning the incremented index modulo the number of items visible.
 getNextIndex : Model -> Int
 getNextIndex model =
   let currentIndex = model.indexSelectedItem
@@ -159,6 +186,11 @@ getNextIndex model =
       nextIndex = currentIndex + 1
   in nextIndex % totalListLength
 
+-- Returns the index of the previous item in the item feed.
+-- It does this by taking the index of the currently focused item,
+-- decrementing that index by 1,
+-- calculating the number of items visible
+-- and returning the decremented index modulo the number of items visible.
 getPreviousIndex : Model -> Int
 getPreviousIndex model =
   let currentIndex = model.indexSelectedItem
@@ -166,6 +198,7 @@ getPreviousIndex model =
       previousIndex = currentIndex - 1
   in  previousIndex % totalListLength
 
+-- Returns the number of items currently visible in the item feed.
 totalListLengthOfVisibleSections : Model -> Int
 totalListLengthOfVisibleSections model =
   let numberOfToDoItems = numberOfItems <| getToDoModelNotSnoozed model
@@ -183,59 +216,25 @@ totalListLengthOfVisibleSections model =
             0
   in numberOfToDoItems + numberOfDoneItems + numberOfSnoozedItems
 
+-- Returns the number of items in the itemList of the given model.
 numberOfItems : Model -> Int
 numberOfItems model =
   let listOfItems = model.itemList
   in List.length listOfItems
 
+-- Returns a model whose itemList contains only the done items
+-- which are not snoozed from the itemList of the given model.
 getDoneModelNotSnoozed : Model -> Model
 getDoneModelNotSnoozed model =
   let notSnoozedModel = filterOnSnoozed model False
   in  filterOnDone notSnoozedModel True
 
+-- Returns a model whose itemList contains only the to-do items
+-- which are not snoozed from the itemList of the given model.
 getToDoModelNotSnoozed : Model -> Model
 getToDoModelNotSnoozed model =
   let notSnoozedModel = filterOnSnoozed model False
   in  filterOnDone notSnoozedModel False
-
-
-
--- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
-focusOnNextItemAction : Model -> Action
-focusOnNextItemAction model =
-  ChangeFocus (getNextIndex model)
-
-focusOnPreviousItemAction : Model -> Action
-focusOnPreviousItemAction model =
-  ChangeFocus (getPreviousIndex model)
-
-normalSortingAction : Model -> Action
-normalSortingAction model =
-  ReverseSortingOrder False
-
-reverseSortingAction : Model -> Action
-reverseSortingAction model =
-  ReverseSortingOrder True
-
-toggleTruncationAction : Model -> Action
-toggleTruncationAction model =
-  let idSelecteditem
-      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
-  in ItemAction idSelecteditem Item.toggleTruncation
-
-togglePinnedAction : Model -> Action
-togglePinnedAction model =
-  let idSelecteditem
-      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
-  in ItemAction idSelecteditem Item.TogglePinned
-
-toggleDoneAction : Model -> Action
-toggleDoneAction model =
-  let idSelecteditem
-      = getIdFromIndexInUnsortedModelList model.indexSelectedItem model
-  in ItemAction idSelecteditem Item.ToggleMarkedAsDone
-
-
 
 -- VIEW ------------------------------------------------------------------------
 view : Signal.Address Action -> Model -> Html
@@ -304,7 +303,9 @@ snoozedHeader =
   h1 [] [text "Snoozed"]
 
 -- FILTERING & SORTING ---------------------------------------------------------
-
+-- Returns a model equal to the given model,
+-- but with an itemList containing only the item from the given model
+-- that are done or not done, depending on the given boolean.
 filterOnDone : Model -> Bool -> Model
 filterOnDone model shouldBeDone =
   let itemIsDone = \(_, item) -> item.markedAsDone
@@ -315,11 +316,17 @@ filterOnDone model shouldBeDone =
       False ->
         { model | itemList = List.filter itemIsNotDone model.itemList }
 
+-- Returns the given model, but with its itemlist sorted according to the
+-- reversedSortingOrder value of the given model.
 sortModel : Model -> Model
 sortModel model =
   { model | itemList
               = List.sortWith (sortOnItem model.reversedSortingOrder) model.itemList }
 
+-- Returns the order between the given item models, depending on the given boolean.
+-- The given boolean says whether the sorting order is reversed or not.
+-- The function extracts the items from their (ID, item) tuples and
+-- then calls another function.
 sortOnItem : Bool -> (ID, Item.Model) -> (ID, Item.Model) -> Order
 sortOnItem isReversed (_, itemModel1) (_, itemModel2) =
   sortItemModel isReversed itemModel1 itemModel2
@@ -327,6 +334,10 @@ sortOnItem isReversed (_, itemModel1) (_, itemModel2) =
 {-- in sortWith worden dingen die LT zijn eerder in de lijst geplaatst.
 Aangezien we de pinned items eerst willen hebben,
  wordt True hier als kleinerg gezien dan False--}
+-- Returns the order beteen the given items, depending on the given boolean.
+-- If the sorting is reversed, the items are purely sorted on date.
+-- If the sorting is not reversed, the items are primarily sorted on their
+-- "pinned" property, and secondly on their date.
 sortItemModel : Bool -> Item.Model -> Item.Model -> Order
 sortItemModel isReversed item1 item2 =
   case isReversed of
@@ -343,6 +354,9 @@ sortItemModel isReversed item1 item2 =
     True ->
       sortOnDate isReversed item1 item2
 
+-- Returns the order beteen the given items, depending on the given boolean.
+-- This function sorts the items on their date.
+-- Note date "compare" sorts Dates from earlier to newer.
 sortOnDate : Bool -> Item.Model -> Item.Model -> Order
 sortOnDate isReversed item1 item2 =
   let dateItem1 = item1.date
@@ -353,7 +367,9 @@ sortOnDate isReversed item1 item2 =
     True ->
       compare dateItem1 dateItem2
 
-
+-- Returns a model equal to the given model,
+-- but with an itemList containing only the item from the given model
+-- that are snoozed or not snoozed, depending on the given boolean.
 filterOnSnoozed : Model -> Bool -> Model
 filterOnSnoozed model  shouldBeSnoozed =
   let itemIsSnoozed = \(_, item) -> item.isSnoozed
@@ -363,6 +379,41 @@ filterOnSnoozed model  shouldBeSnoozed =
       { model | itemList = List.filter itemIsSnoozed model.itemList }
     False ->
       { model | itemList = List.filter itemIsNotSnoozed model.itemList }
+
+-- EXTRA INTERFACE TO EXTERN ---------------------------------------------------
+focusOnNextItemAction : Model -> Action
+focusOnNextItemAction model =
+  ChangeFocus (getNextIndex model)
+
+focusOnPreviousItemAction : Model -> Action
+focusOnPreviousItemAction model =
+  ChangeFocus (getPreviousIndex model)
+
+normalSortingAction : Model -> Action
+normalSortingAction model =
+  ReverseSortingOrder False
+
+reverseSortingAction : Model -> Action
+reverseSortingAction model =
+  ReverseSortingOrder True
+
+toggleTruncationAction : Model -> Action
+toggleTruncationAction model =
+  let idSelecteditem
+      = getIDFromIndexInVisibleItemList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.toggleTruncation
+
+togglePinnedAction : Model -> Action
+togglePinnedAction model =
+  let idSelecteditem
+      = getIDFromIndexInVisibleItemList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.TogglePinned
+
+toggleDoneAction : Model -> Action
+toggleDoneAction model =
+  let idSelecteditem
+      = getIDFromIndexInVisibleItemList model.indexSelectedItem model
+  in ItemAction idSelecteditem Item.ToggleMarkedAsDone
 
 -- STYLE -----------------------------------------------------------------------
 itemListStyle : Attribute

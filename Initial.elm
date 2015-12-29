@@ -1,10 +1,13 @@
 module Initial where
 
-import Item exposing (Model, initModel)
+{--
+This module contains the inital item examples shown when starting the application.
+--}
+import Item exposing (Model)
 import TimeUtil exposing (stringToTime)
 import Email
 import Reminder
-import ItemList 
+import ItemList
 import Html exposing (..)
 import Dict
 

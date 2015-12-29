@@ -2,8 +2,15 @@ module Item
   ( Model, view , update
   , ItemModel (..)
   , Action (..)
-  , newReminderItem, toggleTruncation, initModel
+  , newReminderItem, toggleTruncation
   ) where
+
+{-=
+the Item module is used to represent Items.
+Its Model contains the fields which all types of items have in common.
+An Item Model also contains a Model from a more specific Item module,
+like Reminder or Email. It kind of acts like a decorator to those modules.
+=-}
 
 import Signal
 import Html exposing (..)
@@ -167,7 +174,7 @@ viewDate : Model -> Html
 viewDate model =
   p
     []
-    [ "date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date
+    [ "Date: " ++ TimeUtil.timeToDateString TimeUtil.Dash_DMY model.date
       |> text ]
 
 -- Snooze section
@@ -218,34 +225,6 @@ dateInput address model =
             , type' = "date"
             , action = SetSnoozeDate
             } address model
-
--- MAIN, STATE & SIGNALS -------------------------------------------------------
-actionMailbox : Signal.Mailbox Action
-actionMailbox = Signal.mailbox NoOp
-
-actionSignal : Signal Action
-actionSignal = actionMailbox.signal
-
-state : Signal Model
-state = Signal.foldp update initModel actionSignal
-
-main =
-   Signal.map (view actionMailbox.address) state
-
-initModel : Model
-initModel =
-  { itemModel = EmailModel Email.initModel
-    --itemModel = ReminderModel Reminder.initModel
-  , date = TimeUtil.stringToTime "2015-01-30"
-  , pinned = False
-  , markedAsDone = False
-  , isFocused = False
-  , isPastDeadline = False
-  , isSnoozed = False
-  , snoozeDateInputValue = ""
-  , snoozedUntilDate = 0
-  , snoozeInputState = Dict.empty
-  }
 
 -- UTILS -----------------------------------------------------------------------
 toggleTruncation : Action
@@ -311,7 +290,7 @@ itemStyle model =
         , ("border-bottom-color", "rgb(150, 150, 150)")
         , backGroundColor
         ]
-        
+
 shouldBeMarkedAsPastDeadline : Model -> Bool
 shouldBeMarkedAsPastDeadline model
  = case model.itemModel of
