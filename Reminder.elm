@@ -1,6 +1,9 @@
 module Reminder
   ( Model, init, Action, update, view) where
-
+{--
+The Reminder module contains the Model and functions to represent
+Reminder items
+--}
 import Html exposing (..)
 
 -- MODEL -----------------------------------------------------------------------

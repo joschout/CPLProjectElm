@@ -7,7 +7,12 @@ module AddReminderDecorator
   , toggleVisibilityDoneSection, toggleVisibilitySnoozedSection
   , init
   ) where
-{-- This module is based on
+{--
+The AddReminderDecorator module contains a Model and functions for adding
+reminders to the item feed. Its Model kind of acts like a decorator around
+the Model from the itemList module.
+
+ This module is partially based on
 "Real World Elm - Part 2 - Form Validation"
 http://engineering.truqu.com/2015/09/25/real-world-elm-part-2.html
 --}
@@ -175,7 +180,7 @@ inputFunc params address model =
 reminderBodyInput : Signal.Address Action -> Model -> Html
 reminderBodyInput address model =
   inputFunc { id = "reminderBody"
-            , label = "Reminder message"
+            , label = "Reminder message: "
             , type' = "text"
             , action = SetReminderBody
             , value = model.reminderBody
@@ -184,7 +189,7 @@ reminderBodyInput address model =
 dateInput : Signal.Address Action -> Model -> Html
 dateInput address model =
   inputFunc { id = "date"
-            , label = "date"
+            , label = "Date: "
             , type' = "date"
             , action = SetReminderDate
             , value =

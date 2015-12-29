@@ -1,6 +1,11 @@
 module HotKeyDecorator
   (model, view, update, actions)where
-
+{--
+The HotKeyDecorator module contains a Model and functions
+ that add the hotkey functionality to the application.
+ Its Model kind of acts as a decorator
+ around the Model of the AddReminderDecorator module.
+--}
 import AddReminderDecorator exposing (Model, focusOnPrevious, focusOnNext,
     normalSorting, reverseSorting, init, toggleTruncation, togglePinned,
     toggleDone, toggleVisibilityDoneSection, Action, checkDeadlinesOfItems,
