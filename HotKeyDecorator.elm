@@ -1,5 +1,6 @@
 module HotKeyDecorator
-  (model, view, update, actions)where
+  (model, Model, view, update, actions, Action
+  , addItemsFromJSONAction, init, totalActionSignal) where
 {--
 The HotKeyDecorator module contains a Model and functions
  that add the hotkey functionality to the application.
@@ -223,19 +224,19 @@ timedActionsSignal =
 -- VIEW ------------------------------------------------------------------------
 view :  Signal.Address Action -> Model -> Html
 view address model =
-  div []
-    [ viewAddReminderDecorator address model ]
-
-viewAddReminderDecorator : Signal.Address Action -> Model -> Html
-viewAddReminderDecorator address model =
   AddReminderDecorator.view (Signal.forwardTo address AddReminderDecoratorAction) model.addReminderDecorator
+
+-- EXTERN ----------------------------------------------------------------------
+addItemsFromJSONAction : List(List(String, String)) ->  Action
+addItemsFromJSONAction listOfItems =
+  AddReminderDecoratorAction (AddReminderDecorator.addItemsFromJSONAction listOfItems)
 
 -- MAIN ------------------------------------------------------------------------
 totalActionSignal : Signal Action
 totalActionSignal =
   Signal.mergeMany [ mergedHotkeyActionSignal
                    , timedActionsSignal
-                   ,actions.signal
+                   --, actions.signal
                    ]
 
 

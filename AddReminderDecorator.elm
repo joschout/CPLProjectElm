@@ -5,7 +5,7 @@ module AddReminderDecorator
   , togglePinned, toggleDone, toggleTruncation
   , checkDeadlinesOfItems, checkSnoozeTimeOfItems
   , toggleVisibilityDoneSection, toggleVisibilitySnoozedSection
-  , init
+  , addItemsFromJSONAction, init
   ) where
 {--
 The AddReminderDecorator module contains a Model and functions for adding
@@ -258,6 +258,10 @@ checkSnoozeTimeOfItems currentTime =
 toggleVisibilitySnoozedSection : Action
 toggleVisibilitySnoozedSection =
   ItemListAction (ItemList.ToggleVisibilitySnoozedSection)
+
+addItemsFromJSONAction : List(List(String, String)) ->  Action
+addItemsFromJSONAction listOfItems =
+  ItemListAction (ItemList.AddItemsFromJSON listOfItems)
 -- STYLE -----------------------------------------------------------------------
 
 reminderSectionStyle : Attribute

@@ -1,7 +1,8 @@
 module JSONUtil
-  (jsonMailbox)
+  (jsonMailbox, getJSONAndSendItToMailboxTask, EmailKVString)
   where
 
+import Graphics.Element exposing (show)
 import Http
 import Html exposing (Html)
 import Task exposing (Task, andThen)
@@ -21,10 +22,10 @@ urlOfJSON = "https://api.myjson.com/bins/19lg3"
 -- type alias to make my life easier
 type alias EmailKVString = List (String, String)
 
--- get the email info *and then* send the result to our mailbox
-port fetchReadme : Task Http.Error ()
-port fetchReadme =
-  safeGetJSOn `andThen` sendJSON
+
+getJSONAndSendItToMailboxTask : Task Http.Error ()
+getJSONAndSendItToMailboxTask =
+  safeGetJSON `andThen` sendJSON
 
 -- TASK FOR SENDING THE EMAIL INFO TO THE MAILBOX ------------------------------
 -- send the list of email info to our jsonMailbox
@@ -41,8 +42,8 @@ getJSON =
 
 -- get the list of EmailKVString values at the url
 -- If it should failm return an empty lis.
-safeGetJSOn : Task x (List EmailKVString)
-safeGetJSOn =
+safeGetJSON : Task x (List EmailKVString)
+safeGetJSON =
   getJSON `Task.onError` (\err -> Task.succeed [])
 
 -- DECODING THE JSON -----------------------------------------------------------

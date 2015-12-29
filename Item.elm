@@ -2,7 +2,8 @@ module Item
   ( Model, view , update
   , ItemModel (..)
   , Action (..)
-  , newReminderItem, toggleTruncation
+  , newReminderItem, newEmailItem, itemTemplate
+  , toggleTruncation, equal
   ) where
 
 {-=
@@ -18,8 +19,8 @@ import Html.Attributes exposing (action, attribute, class, for, id, type', value
 import Html.Events exposing (on, onClick, targetValue)
 import Time exposing (Time)
 import String
-import Email exposing (Action, update, Model, initModel)
-import Reminder exposing (Action, update, Model, init)
+import Email exposing (Action, update, Model, init, equal)
+import Reminder exposing (Action, update, Model, init, equal)
 import TimeUtil exposing (timeToDateString, stringToTime, DateFormat)
 import Dict exposing (Dict)
 
@@ -230,19 +231,36 @@ dateInput address model =
 toggleTruncation : Action
 toggleTruncation = EmailAction (Email.ToggleTruncation)
 
-newReminderItem : String ->  String -> Bool -> Bool -> Model
-newReminderItem body' date' pinned' markedAsDone' =
-  { itemModel = ReminderModel
-                  <| Reminder.init body'
-  , date = TimeUtil.stringToTime date'
-  , pinned = pinned'
-  , markedAsDone = markedAsDone'
+itemTemplate : Model
+itemTemplate =
+  { itemModel = ReminderModel (Reminder.init "placeholder reminder body")
+  , date = TimeUtil.stringToTime "2015-01-30"
+  , pinned = False
+  , markedAsDone = False
   , isFocused = False
   , isPastDeadline = False
   , isSnoozed = False
   , snoozeDateInputValue = ""
   , snoozedUntilDate = 0
   , snoozeInputState = Dict.empty
+  }
+
+newReminderItem : String ->  String -> Bool -> Bool -> Model
+newReminderItem body' date' pinned' markedAsDone' =
+  { itemTemplate
+    | itemModel = ReminderModel
+                    <| Reminder.init body'
+    , date = TimeUtil.stringToTime date'
+    , pinned = pinned'
+    , markedAsDone = markedAsDone'
+  }
+
+newEmailItem : String -> String -> String -> String -> String -> Model
+newEmailItem fromValue toValue titleValue dateValue bodyValue =
+  { itemTemplate
+    | itemModel = EmailModel
+                    <| Email.init fromValue toValue titleValue bodyValue
+    , date = TimeUtil.stringToTime dateValue
   }
 
 isValidDate : String -> Bool
@@ -255,6 +273,19 @@ type alias InputFuncParams =
   , type': String -- the type of input (text, email, etc.) Note that 'type' is a keyword
   , action: String -> Action -- a function that takes the value of the input and turns it into an action
   }
+
+equal : Model -> Model -> Bool
+equal item1 item2 =
+  let itemModelEq =
+        case (item1.itemModel, item2.itemModel) of
+          (EmailModel emailModel1, EmailModel emailModel2) ->
+            Email.equal emailModel1 emailModel2
+          (ReminderModel reminderModel1, ReminderModel reminderModel2) ->
+            Reminder.equal reminderModel1 reminderModel2
+          _ ->
+           False
+      dateEq = item1.date == item2.date
+  in itemModelEq && dateEq
 
 -- STYLE -----------------------------------------------------------------------
 selectedItemStyle : Bool -> Attribute

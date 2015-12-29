@@ -6,9 +6,12 @@ module Main where
 import Html exposing ( Html )
 import Signal
 
-import HotKeyDecorator exposing (model, view, update, actions)
+import JSONUtil exposing (jsonMailbox)
+import HotKeyDecorator exposing (model, Model, view, update, actions, Action
+                                , addItemsFromJSONAction, init)
 import Initial exposing (initialItemList)
-
+import Task exposing (Task)
+import Http
 
 -- Name: Jonas Schouterden
 -- Student ID: r0260385
@@ -89,8 +92,72 @@ import Initial exposing (initialItemList)
 -- A section to see all the snoozed items can be toggled using ALT + W
 -- See also the summary of the snoozed item feature.
 
+-- get the email info *and then* send the result to our mailbox
+
+
+port fetchJSON : Task Http.Error ()
+port fetchJSON = JSONUtil.getJSONAndSendItToMailboxTask
+
+-- MODEL -----------------------------------------------------------------------
+type alias Model = {
+  hotKeyDecorator : HotKeyDecorator.Model
+}
+
+-- ACTION ----------------------------------------------------------------------
+type Action
+  = NoOp
+  | HotKeyDecoratorAction HotKeyDecorator.Action
+  | AddItems (List(List(String, String)))
+
+init : Model
+init =
+  { hotKeyDecorator = HotKeyDecorator.init}
+
+-- UPDATE ----------------------------------------------------------------------
+update : Action -> Model -> Model
+update action model =
+  case action of
+    NoOp ->
+      model
+    HotKeyDecoratorAction hotKeyDecoratorAction ->
+      { model
+      | hotKeyDecorator = HotKeyDecorator.update hotKeyDecoratorAction model.hotKeyDecorator}
+
+    AddItems listOfItems ->
+      { model
+      | hotKeyDecorator = HotKeyDecorator.update
+                          (HotKeyDecorator.addItemsFromJSONAction listOfItems)
+                          model.hotKeyDecorator}
+-- VIEW ------------------------------------------------------------------------
+view :  Signal.Address Action -> Model -> Html
+view address model =
+  HotKeyDecorator.view (Signal.forwardTo address HotKeyDecoratorAction) model.hotKeyDecorator
+
+
+-- SIGNALS ---------------------------------------------------------------------
+hotKeyActionSignal : Signal Action
+hotKeyActionSignal =
+  Signal.map (\hkAction -> HotKeyDecoratorAction hkAction) HotKeyDecorator.totalActionSignal
+
+jsonResultSignal : Signal Action
+jsonResultSignal =
+  Signal.map AddItems jsonMailbox.signal
+
+totalSignal : Signal Action
+totalSignal =
+  Signal.mergeMany [ hotKeyActionSignal
+                   , jsonResultSignal
+                   , actions.signal
+                   ]
+
+model : Signal Model
+model = Signal.foldp update init totalSignal
+
+actions : Signal.Mailbox Action
+actions =
+  Signal.mailbox NoOp
 
 -- Start of programs
 main : Signal Html
 main =
-  Signal.map (HotKeyDecorator.view actions.address) HotKeyDecorator.model
+  Signal.map (view actions.address) model

@@ -1,5 +1,5 @@
 module Reminder
-  ( Model, init, Action, update, view) where
+  ( Model, init, Action, update, view, equal) where
 {--
 The Reminder module contains the Model and functions to represent
 Reminder items
@@ -31,6 +31,10 @@ view : Signal.Address Action -> Model -> Html
 view address model =
    p [] [ text model.body]
 
+-- UTILS -----------------------------------------------------------------------
+equal : Model -> Model -> Bool
+equal reminder1 reminder2 =
+  reminder1.body == reminder2.body
 -- MAIN (for testing purposes) -------------------------------------------------
 {-- state : Signal Model
 state = Signal.foldp update (init "Dit is een testbody.") actionSignal

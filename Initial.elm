@@ -1,9 +1,9 @@
-module Initial where
+module Initial (initialItemList) where
 
 {--
 This module contains the inital item examples shown when starting the application.
 --}
-import Item exposing (Model)
+import Item exposing (Model, itemTemplate)
 import TimeUtil exposing (stringToTime)
 import Email
 import Reminder
@@ -11,20 +11,6 @@ import ItemList
 import Html exposing (..)
 import Dict
 
---------------------------------------------------------------------------------
-itemTemplate : Item.Model
-itemTemplate =
-  { itemModel = Item.ReminderModel (Reminder.init "placeholder reminder body")
-  , date = TimeUtil.stringToTime "2015-01-30"
-  , pinned = False
-  , markedAsDone = False
-  , isFocused = False
-  , isPastDeadline = False
-  , isSnoozed = False
-  , snoozeDateInputValue = ""
-  , snoozedUntilDate = 0
-  , snoozeInputState = Dict.empty
-  }
 
 --------------------------------------------------------------------------------
 

@@ -15,6 +15,8 @@ import Item exposing (Model, view, newReminderItem, toggleTruncation, Action)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Time exposing (Time)
+import JSONUtil
+import ItemExtraction
 
 -- MODEL -----------------------------------------------------------------------
 type alias Model =
@@ -43,6 +45,8 @@ type Action
   --
   | CheckSnoozeTimes Time
   | ToggleVisibilitySnoozedSection
+  --
+  | AddItemsFromJSON (List JSONUtil.EmailKVString)
 
 update : Action -> Model -> Model
 update action model =
@@ -60,11 +64,7 @@ update action model =
 
     AddReminder body date pinned markedAsDone ->
       let newReminder = Item.newReminderItem body date pinned markedAsDone
-          newItem = (model.nextID, newReminder)
-          newItemList = model.itemList ++ [ newItem ]
-      in { model |
-            itemList = newItemList,
-            nextID = model.nextID + 1}
+      in addItemToModel newReminder model
 
     ChangeFocus newIndex ->
       changeFocusOfModel newIndex model
@@ -96,6 +96,33 @@ update action model =
           totalListLength = totalListLengthOfVisibleSections modelToggledVisibility
           currentIndexMod = currentIndex % totalListLength
       in { modelToggledVisibility | indexSelectedItem = currentIndexMod }
+    AddItemsFromJSON list ->
+      let itemsFromJSON = ItemExtraction.parseEmailListFromJSON list
+          newItems = List.filter (not << checkIfItemInList model.itemList) itemsFromJSON
+      in List.foldr addItemToModel model newItems
+
+addItemToModel : Item.Model -> Model -> Model
+addItemToModel item model =
+  let newItem = (model.nextID, item)
+      newItemList = model.itemList ++ [ newItem ]
+  in { model
+      | itemList = newItemList
+      , nextID = model.nextID + 1}
+
+-- Checks whether any item in the given list is equal to the given item
+-- It first maps the list of items to a list of bools,
+-- with each bool telling whether the corresponding item in the list is equal
+-- to the given item.
+-- It then folds over that list of booleans using the logical OR operator.
+-- That is, if there is (at least) one TRUE in the list, the function must
+-- return TRUE.
+checkIfItemInList : List (ID, Item.Model) -> Item.Model -> Bool
+checkIfItemInList itemList itemModel=
+  let isEqualToGivenModel = \(_, itemModel2) -> (Item.equal itemModel itemModel2)
+      listOfBools = List.map isEqualToGivenModel itemList
+  in List.foldr (||) False listOfBools
+
+--------------------------------------------------------------------------------
 
 -- checks the deadline for the given item to the given time
 -- and returns the updated item
@@ -161,7 +188,7 @@ getIDFromIndexInVisibleItemList index model =
       totalSortedList = sortedToDoModel.itemList ++ sortedDoneItemsList ++ snoozedItemsList
   in getIdFromIndexInList index totalSortedList
 
--- Takes the (ID, item)-tuple at the given ID in the given list
+-- Takes the (ID, item)-tuple at the given index in the given list
 -- and returns the ID.
 getIdFromIndexInList : Int -> List(ID, Item.Model) -> ID
 getIdFromIndexInList index list =

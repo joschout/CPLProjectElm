@@ -1,5 +1,5 @@
 module Email
-  ( Model, Action (..) , update, view, initModel) where
+  ( Model, Action (..) , update, view, equal, init) where
 {--
 The Email module contains the logic for Email items.
 --}
@@ -92,25 +92,19 @@ allowedToBeTruncated string =
   in if stringLength > 200  then True
     else False
 
-initModel : Model
-initModel  =
-  { from = "bossman@corporate.me"
-  , to = "manager@corporate.me"
-  , title = "Corporate Ipsum"
-  , body = """Collaboratively administrate empowered markets via plug-and-play
-              networks. Dynamically procrastinate B2C users after installed base
-              benefits. Dramatically visualize customer directed convergence without
-              revolutionary ROI.
+equal : Model -> Model -> Bool
+equal email1 email2 =
+  let fromEq = email1.from == email2.from
+      toEq = email1.to == email2.to
+      titleEq = email1.title == email2.title
+      bodyEq = email1.body == email2.body
+  in fromEq && toEq && titleEq && bodyEq
 
-              Efficiently unleash cross-media information without cross-media
-              value. Quickly maximize timely deliverables for real-time
-              schemas. Dramatically maintain clicks-and-mortar solutions
-              without functional solutions.
-
-              Completely synergize resource taxing relationships via premier
-              niche markets. Professionally cultivate one-to-one customer
-              service with robust ideas. Dynamically innovate
-              resource-leveling customer service for state of the art customer
-              service."""
+init : String ->  String -> String -> String -> Model
+init from' to' title' body' =
+  { from = from'
+  , to = to'
+  , title = title'
+  , body = body'
   , isTruncated = True
   }
