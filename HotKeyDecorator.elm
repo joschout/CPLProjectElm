@@ -49,8 +49,6 @@ update action model =
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.focusOnNext model.addReminderDecorator) model.addReminderDecorator}
     PreviousItemHK ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.focusOnPrevious model.addReminderDecorator) model.addReminderDecorator }
---    ChangeSortingHK ->
---      { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.changeSorting model.addReminderDecorator) model.addReminderDecorator }
     ToggleTruncationHK ->
       { model | addReminderDecorator = AddReminderDecorator.update (AddReminderDecorator.toggleTruncation model.addReminderDecorator) model.addReminderDecorator }
     TogglePinnedHK ->
