@@ -3,8 +3,8 @@ module ItemExtraction where
 import Item
 import JSONUtil exposing (EmailKVString)
 import Static
--- EXTRACTING ITEMS FROM STATIC ------------------------------------------------
 
+-- EXTRACTING ITEMS FROM STATIC ------------------------------------------------
 getRemindersFromStatic : List Item.Model
 getRemindersFromStatic =
   List.map staticReminderToItem Static.reminders

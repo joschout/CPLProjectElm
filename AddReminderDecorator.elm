@@ -23,7 +23,6 @@ import Html.Events exposing (on, onClick, targetValue)
 import Dict exposing (Dict)
 import String
 import ItemList
-import Initial exposing (initialItemList)
 import Time exposing (Time)
 import TimeUtil exposing (DateFormat, timeToDateString)
 
@@ -51,7 +50,7 @@ type alias Model =
 
 init : Model
 init =
-  { itemList = initialItemList
+  { itemList = ItemList.initialStaticItemList
   , reminderBody = ""
   , dateInputValue = ""
   , inputState = Dict.empty

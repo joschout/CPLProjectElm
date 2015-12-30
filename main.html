@@ -13210,7 +13210,7 @@ Elm.ItemList.make = function (_elm) {
       var snoozedItemsList = function () {
          var _p20 = model.snoozedSectionVisible;
          if (_p20 === true) {
-               var snoozedModel = A2(filterOnSnoozed,model,true);
+               var snoozedModel = sortModel(A2(filterOnSnoozed,model,true));
                return snoozedModel.itemList;
             } else {
                return _U.list([]);
@@ -13357,8 +13357,13 @@ Elm.ItemList.make = function (_elm) {
               _p38));
            },
            itemsFromJSON);
-           var newModel = A3($List.foldr,addItemToModel,model,newItems);
-           return A2(changeFocusOfModel,0,newModel);}
+           var _p39 = $List.isEmpty(newItems);
+           if (_p39 === true) {
+                 return model;
+              } else {
+                 var newModel = A3($List.foldr,addItemToModel,model,newItems);
+                 return A2(changeFocusOfModel,0,newModel);
+              }}
    });
    var AddItemsFromJSON = function (a) {
       return {ctor: "AddItemsFromJSON",_0: a};
@@ -13395,16 +13400,16 @@ Elm.ItemList.make = function (_elm) {
    var ItemAction = F2(function (a,b) {
       return {ctor: "ItemAction",_0: a,_1: b};
    });
-   var viewItem = F2(function (address,_p39) {
-      var _p40 = _p39;
+   var viewItem = F2(function (address,_p40) {
+      var _p41 = _p40;
       return A2($Item.view,
-      A2($Signal.forwardTo,address,ItemAction(_p40._0)),
-      _p40._1);
+      A2($Signal.forwardTo,address,ItemAction(_p41._0)),
+      _p41._1);
    });
    var viewToDoDiv = F2(function (address,model) {
       var toDoModel = getToDoModelNotSnoozed(model);
-      var _p41 = $List.isEmpty(toDoModel.itemList);
-      if (_p41 === true) {
+      var _p42 = $List.isEmpty(toDoModel.itemList);
+      if (_p42 === true) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedToDoModel = sortModel(toDoModel);
@@ -13418,8 +13423,8 @@ Elm.ItemList.make = function (_elm) {
    });
    var viewDoneDiv = F2(function (address,model) {
       var doneModel = getDoneModelNotSnoozed(model);
-      var _p42 = shouldDoneItemsBeShown(doneModel);
-      if (_p42 === false) {
+      var _p43 = shouldDoneItemsBeShown(doneModel);
+      if (_p43 === false) {
             return A2($Html.div,_U.list([]),_U.list([]));
          } else {
             var sortedDoneModel = sortModel(doneModel);
@@ -13432,9 +13437,9 @@ Elm.ItemList.make = function (_elm) {
          }
    });
    var viewSnoozeSection = F2(function (address,model) {
-      var _p43 = model.snoozedSectionVisible;
-      if (_p43 === true) {
-            var snoozedModel = A2(filterOnSnoozed,model,true);
+      var _p44 = model.snoozedSectionVisible;
+      if (_p44 === true) {
+            var snoozedModel = sortModel(A2(filterOnSnoozed,model,true));
             var items = A2($List.map,
             viewItem(address),
             snoozedModel.itemList);
@@ -13477,6 +13482,16 @@ Elm.ItemList.make = function (_elm) {
                     ,reversedSortingOrder: false
                     ,doneItemsVisible: true
                     ,snoozedSectionVisible: false};
+   var initialStaticItemList = function () {
+      var initialItems = A2($Basics._op["++"],
+      $ItemExtraction.getRemindersFromStatic,
+      $ItemExtraction.getEmailsFromStatic);
+      var itemListModel = A3($List.foldr,
+      addItemToModel,
+      emptyModel,
+      initialItems);
+      return A2(update,ChangeFocus(0),itemListModel);
+   }();
    var Model = F6(function (a,b,c,d,e,f) {
       return {itemList: a
              ,nextID: b
@@ -13497,6 +13512,7 @@ Elm.ItemList.make = function (_elm) {
                                  ,toggleDoneAction: toggleDoneAction
                                  ,emptyModel: emptyModel
                                  ,addItemToModel: addItemToModel
+                                 ,initialStaticItemList: initialStaticItemList
                                  ,Model: Model
                                  ,NoOp: NoOp
                                  ,ItemAction: ItemAction
@@ -13508,35 +13524,6 @@ Elm.ItemList.make = function (_elm) {
                                  ,CheckSnoozeTimes: CheckSnoozeTimes
                                  ,ToggleVisibilitySnoozedSection: ToggleVisibilitySnoozedSection
                                  ,AddItemsFromJSON: AddItemsFromJSON};
-};Elm.Initial = Elm.Initial || {};
-Elm.Initial.make = function (_elm) {
-   "use strict";
-   _elm.Initial = _elm.Initial || {};
-   if (_elm.Initial.values) return _elm.Initial.values;
-   var _U = Elm.Native.Utils.make(_elm),
-   $Basics = Elm.Basics.make(_elm),
-   $Debug = Elm.Debug.make(_elm),
-   $ItemExtraction = Elm.ItemExtraction.make(_elm),
-   $ItemList = Elm.ItemList.make(_elm),
-   $List = Elm.List.make(_elm),
-   $Maybe = Elm.Maybe.make(_elm),
-   $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
-   var _op = {};
-   var initialItemList = function () {
-      var initialItems = A2($Basics._op["++"],
-      $ItemExtraction.getRemindersFromStatic,
-      $ItemExtraction.getEmailsFromStatic);
-      var itemListModel = A3($List.foldr,
-      $ItemList.addItemToModel,
-      $ItemList.emptyModel,
-      initialItems);
-      return A2($ItemList.update,
-      $ItemList.ChangeFocus(0),
-      itemListModel);
-   }();
-   return _elm.Initial.values = {_op: _op
-                                ,initialItemList: initialItemList};
 };Elm.AddReminderDecorator = Elm.AddReminderDecorator || {};
 Elm.AddReminderDecorator.make = function (_elm) {
    "use strict";
@@ -13550,7 +13537,6 @@ Elm.AddReminderDecorator.make = function (_elm) {
    $Html = Elm.Html.make(_elm),
    $Html$Attributes = Elm.Html.Attributes.make(_elm),
    $Html$Events = Elm.Html.Events.make(_elm),
-   $Initial = Elm.Initial.make(_elm),
    $ItemList = Elm.ItemList.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
@@ -13713,7 +13699,7 @@ Elm.AddReminderDecorator.make = function (_elm) {
    });
    var NoOp = {ctor: "NoOp"};
    var actions = $Signal.mailbox(NoOp);
-   var init = {itemList: $Initial.initialItemList
+   var init = {itemList: $ItemList.initialStaticItemList
               ,reminderBody: ""
               ,dateInputValue: ""
               ,inputState: $Dict.empty
@@ -13989,18 +13975,13 @@ Elm.HotKeyDecorator.make = function (_elm) {
    var totalActionSignal = $Signal.mergeMany(_U.list([mergedHotkeyActionSignal
                                                      ,timedActionsSignal]));
    var NoOp = {ctor: "NoOp"};
-   var actions = $Signal.mailbox(NoOp);
    var init = {addReminderDecorator: $AddReminderDecorator.init};
-   var model = A3($Signal.foldp,update,init,totalActionSignal);
-   var main = A2($Signal.map,view(actions.address),model);
    var Model = function (a) {
       return {addReminderDecorator: a};
    };
    return _elm.HotKeyDecorator.values = {_op: _op
-                                        ,model: model
                                         ,view: view
                                         ,update: update
-                                        ,actions: actions
                                         ,addItemsFromJSONAction: addItemsFromJSONAction
                                         ,init: init
                                         ,totalActionSignal: totalActionSignal

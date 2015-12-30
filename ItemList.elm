@@ -3,7 +3,7 @@ module ItemList
   , focusOnPreviousItemAction, focusOnNextItemAction
   , normalSortingAction, reverseSortingAction
   , toggleTruncationAction, togglePinnedAction, toggleDoneAction
-  , emptyModel, addItemToModel
+  , emptyModel, addItemToModel, initialStaticItemList
   ) where
 
 {--
@@ -41,6 +41,14 @@ emptyModel =
   , doneItemsVisible = True
   , snoozedSectionVisible = False
   }
+
+initialStaticItemList : Model
+initialStaticItemList =
+  let initialItems = ItemExtraction.getRemindersFromStatic
+                      ++ ItemExtraction.getEmailsFromStatic
+      itemListModel = List.foldr addItemToModel emptyModel initialItems
+  in update (ChangeFocus 0) itemListModel
+
 
 -- UPDATE ----------------------------------------------------------------------
 type Action
@@ -110,8 +118,13 @@ update action model =
     AddItemsFromJSON list ->
       let itemsFromJSON = ItemExtraction.parseEmailListFromJSON list
           newItems = List.filter (not << checkIfItemInList model.itemList) itemsFromJSON
-          newModel = List.foldr addItemToModel model newItems
-      in changeFocusOfModel 0 newModel
+      in case List.isEmpty newItems of
+          True ->
+            model
+          False ->
+            let newModel = List.foldr addItemToModel model newItems
+            in changeFocusOfModel 0 newModel
+
 
 addItemToModel : Item.Model -> Model -> Model
 addItemToModel item model =
@@ -193,7 +206,8 @@ getIDFromIndexInVisibleItemList index model =
       snoozedItemsList =
         case model.snoozedSectionVisible of
           True ->
-            let snoozedModel = filterOnSnoozed model True
+            let snoozedModel = sortModel
+                      <| filterOnSnoozed model True
             in snoozedModel.itemList
           False ->
             []
@@ -331,7 +345,7 @@ viewSnoozeSection : Signal.Address Action -> Model -> Html
 viewSnoozeSection address model =
   case model.snoozedSectionVisible of
     True ->
-      let snoozedModel = filterOnSnoozed model True
+      let snoozedModel = sortModel <| filterOnSnoozed model True
           items = List.map (viewItem address) snoozedModel.itemList
       in div [ itemListStyle ]  ([snoozedHeader] ++ items)
     False ->

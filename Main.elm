@@ -25,7 +25,7 @@ import Http
 --        (Hotkey: ALT + I)
 -- Note: which item will be focused on (when using the hotkeys to focus on the next and previous item)
 -- depends on the visibility of the Done section.
--- When the done section is made invisible, the done items will can not be focused on.
+-- When the done section is made invisible, the done items cannot be focused on.
 
 
 -- * Hide the 'add reminder' functionality and add a hotkey to toggle its
@@ -33,7 +33,7 @@ import Http
 -- Status: Completed / Attempted / Unattempted
 -- Summary: Completed
 -- The visibility of the reminder section can be toggled
--- using the hotkey ALT + R
+-- using the hotkey ALT + R.
 
 
 -- * Put the current date as the default in the date picker when adding
@@ -67,6 +67,10 @@ import Http
 -- shows the date until which it will be snoozed.
 -- Note: which item will be focused on (when using the hotkeys to focus on the next and previous item)
 -- depends on the visibility of the Snoozed section.
+-- Like the items in the other sections,
+-- the items in this section are also sorted on their pinned status and date,
+-- and their sorting order can be changed using the ALt + S hotkey.
+
 
 -- * On startup, read e-mails from a Json document at this url:
 -- * http://people.cs.kuleuven.be/~bob.reynders/2015-2016/emails.json
@@ -78,12 +82,17 @@ import Http
 -- (The url "http://myjson.com/19lg3" was suggested,
 --   but the former url points to pure JSON.)
 
+
 -- * Periodically check for e-mails from Json (same url).
 -- Status: Completed / Attempted / Unattempted
 -- Summary: Completed
 -- Every minute, the url will be checked for new e-mails.
 -- Only e-mails that aren't already in the item list will be added.
 -- The check for duplicates is done by simply checking every field for equality.
+-- Note: when new e-mails are found at the url, they are added to the item list,
+-- and the focus is reset to the first item in the list
+-- (i.e., the item on top of the list). This was a design choice; it is easy to
+-- keep the current focus by changing a few lines of code.
 
 
 -- * Add persistence to your application by using Html local storage so that
@@ -95,7 +104,7 @@ import Http
 -- * Come up with your own extension!
 -- Status: Completed / Attempted / Unattempted
 -- Summary: Completed
--- A section to see all the snoozed items can be toggled using ALT + W
+-- A section to see all the snoozed items can be toggled using ALT + W.
 -- See also the summary of the snoozed item feature.
 
 
@@ -162,7 +171,7 @@ actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
 
--- Start of program
+-- MAIN ------------------------------------------------------------------------
 main : Signal Html
 main =
   Signal.map (view actions.address) model
